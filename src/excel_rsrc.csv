@@ -1,0 +1,3 @@
+Wash Solutions,Core Lab,=CONCATENATE("2% Wash - ", G1, ";", "20% Wash - ", G1, ";", "100% Wash - ", G1, ";", "2% Wash - ", J1, ";", "20% Wash - ", J1, ";", "100% Wash - ", J1),Opened,=CONCATENATE("1;1;", F1 ,";1;1;", I1),=H1 - TODAY(),M505500,2/27/2029,=K1 - TODAY(),M507690,04/29/2029
+ISE Calibrators,Core Lab,Low Serum;High Serum;Low Urine;High Urine,Opened,90;90;90;90,,,,,,,
+Adjusted Citrate Tubes,OP Phlebotomy,=CONCATENATE("Adjusted Citrate ",G3,"; ","Adjusted Citrate ", J3),Opened,=CONCATENATE(F3 ,";", I3),=H3 - TODAY(),5169794,3/30/2026,=K3 - TODAY(),4256285,6/30/2025,9/20/2025

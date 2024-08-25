@@ -1,0 +1,9 @@
+printer name;ip address;reserved field;is default
+Micro - Split Label;10.32.40.22;;
+Hemo - Xylene Resistant;10.32.48.12;;1
+Central - Full Face;10.32.40.25;;
+Chem - Face Label;10.32.48.11;;
+Urines - Full Face;10.32.40.30;;
+Blood Bank Vision - Full Face;10.32.40.27;;
+BB PRT001131 - Full Face;10.32.48.14;;
+Virtual Printer;127.0.0.1;;

@@ -1,0 +1,255 @@
+<html>
+<head>
+    <title>Advanced Help - QC Material Label Printer</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            margin: 0; 
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 5px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        h1 { 
+            color: #2c3e50; 
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+            animation: fadeIn 1s ease-in-out;
+        }
+        h2 { 
+            color: #3498db; 
+            border-bottom: 1px solid #ecf0f1; 
+            padding-bottom: 5px; 
+            margin-top: 20px;
+            animation: slideIn 0.5s ease-in-out;
+        }
+        .section {
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            animation: fadeIn 0.8s ease-in-out;
+        }
+        .cmd { 
+            margin: 8px 0; 
+            padding: 8px;
+            border-radius: 3px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .cmd:hover {
+            background-color: #e5f7ff;
+        }
+        .cmd.active {
+            background-color: #d4ebff;
+            border-left: 3px solid #2980b9;
+        }
+        .key { 
+            font-weight: bold; 
+            color: #2980b9; 
+            display: inline-block;
+            width: 40px;
+            padding: 2px 6px;
+            background-color: #eaf2f8;
+            border-radius: 3px;
+            text-align: center;
+            margin-right: 10px;
+        }
+        .description {
+            display: inline-block;
+        }
+        .details {
+            padding: 10px;
+            margin: 8px 0 8px 40px;
+            background-color: #f0f7fb;
+            border-left: 2px solid #3498db;
+            border-radius: 0 4px 4px 0;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            overflow: hidden;
+            max-height: 0;
+        }
+        .details.visible {
+            display: block;
+            opacity: 1;
+            max-height: 500px;
+            transition: opacity 0.3s, max-height 0.5s;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>QC Material Label Printer - Help</h1>
+        
+        <div class="section">
+            <div class="cmd" data-key="?"><span class="key">?</span> <span class="description">Show this help output</span></div>
+            <div class="details" id="details-?">
+                Opens this help page in your browser with more detailed information about the available commands.
+            </div>
+        </div>
+        
+        <h2>User Controls</h2>
+        <div class="section">
+            <div class="cmd" data-key="b"><span class="key">b</span> <span class="description">Printer Downtime Barcodes</span></div>
+            <div class="details" id="details-b">
+                Launches the barcode generator tool to print barcodes during EPIC downtime situations.
+            </div>
+            
+            <div class="cmd" data-key="e"><span class="key">e</span> <span class="description">Print ISE Calibration labels</span></div>
+            <div class="details" id="details-e">
+                Prints labels for the ISE calibrators.<br> 
+                <br> 
+                1. Select a temporary printer (Suggested to use the split-label printer in Micro)<br> 
+                <br> 
+                2. Scan the QR codes on that boxes the calibrators came in.<br> 
+                    - If the box is unavailable. Press the end key and enter the information manually.<br> 
+                <br> 
+                3. Enter the number of copies to print and press enter.<br> 
+            </div>
+            
+            <div class="cmd" data-key="f"><span class="key">f</span> <span class="description">Flush printing queue</span></div>
+            <div class="details" id="details-f">
+                To conserve resources, labels print only in pairs. If you only need to print one label, you may flush the queue with the `f` key.<br><br>
+
+                The side pane will show if there exist any pending print jobs in the queue.<br><br>
+
+                Pressing `f` has no effect if nothing is in the print queue.<br><br>
+            </div>
+            
+            <div class="cmd" data-key="h"><span class="key">h</span> <span class="description">Show help output</span></div>
+            <div class="details" id="details-h">
+                Pushes control mappings into the side pane.
+            </div>
+            
+            <div class="cmd" data-key="o"><span class="key">o</span> <span class="description">Toggle material open status</span></div>
+            <div class="details" id="details-o">
+                Toggles whether material/vials should be treated as opened or unopened. This affects how the label is formatted and expirations are calculated. 
+            </div>
+            
+            <div class="cmd" data-key="p"><span class="key">p</span> <span class="description">Select printer</span></div>
+            <div class="details" id="details-p">
+                Opens the printer selection dialog to choose which printer to use for label printing. Your printer preference is saved. Updates will, however, overwrite your configurations.
+            </div>
+            
+            <div class="cmd" data-key="r"><span class="key">r</span> <span class="description">Edit online resources</span></div>
+            <div class="details" id="details-r">
+                Opens the Google Sheets configuration file in your browser to edit available online resources.
+            </div>
+            
+            <div class="cmd" data-key="x"><span class="key">x</span> <span class="description">Print image</span></div>
+            <div class="details" id="details-x">
+                Reads in image from user's desktop named "pepe.png," applies 1-bit dithering, and formats into ZPL command to stream into printer's bitmap buffer.
+                Name an image on desktop "pepe.png" and press `x` to print image to selected printer. 
+            </div>
+        </div>
+        
+        <h2>Developer Controls</h2>
+        <div class="section">
+            <div class="cmd" data-key="c"><span class="key">c</span> <span class="description">Open PowerShell ISE</span></div>
+            <div class="details" id="details-c">
+                Opens the PowerShell Integrated Scripting Environment (ISE) with the application script loaded for editing and debugging.
+            </div>
+            
+            <div class="cmd" data-key="d"><span class="key">d</span> <span class="description">Start Runtime Debugging</span></div>
+            <div class="details" id="details-d">
+                Enters a nested PowerShell prompt for runtime debugging and troubleshooting of the application.
+            </div>
+            
+            <div class="cmd" data-key="F5"><span class="key">F5</span> <span class="description">Reload application</span></div>
+            <div class="details" id="details-F5">
+                Completely reloads the application, refreshing all modules and configuration files to apply any changes.
+            </div>
+            
+            <div class="cmd" data-key="m"><span class="key">m</span> <span class="description">Muginn utility</span></div>
+            <div class="details" id="details-m">
+                Launches the Muginn utility function for configuring label printers by name.
+            </div>
+            
+            <div class="cmd" data-key="u"><span class="key">u</span> <span class="description">Force update</span></div>
+            <div class="details" id="details-u">
+                Forces an update check and installs any available updates for the application.
+            </div>
+        </div>
+        
+        <div class="footer">
+            QC Material Label Printer vVERSION_PLACEHOLDER
+        </div>
+    </div>
+    
+    <script>
+        // Single DOMContentLoaded event
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get version from URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const version = urlParams.get('version');
+            
+            // Update the footer text if version parameter exists
+            if (version) {
+                document.querySelector('.footer').textContent = `QC Material Label Printer v${version}`;
+            }
+            
+            // Animation and expandable functionality
+            const commands = document.querySelectorAll('.cmd');
+            let currentOpen = null;
+            
+            // Add animation delay
+            commands.forEach(function(cmd, index) {
+                cmd.style.animationDelay = (index * 0.05) + 's';
+                
+                // Add click event listener
+                cmd.addEventListener('click', function() {
+                    const key = this.getAttribute('data-key');
+                    const details = document.getElementById('details-' + key);
+                    
+                    // If something else is open, close it
+                    if (currentOpen && currentOpen !== details) {
+                        currentOpen.classList.remove('visible');
+                        currentOpen.parentElement.querySelector('.cmd').classList.remove('active');
+                    }
+                    
+                    // Toggle current item
+                    if (details.classList.contains('visible')) {
+                        details.classList.remove('visible');
+                        this.classList.remove('active');
+                        currentOpen = null;
+                    } else {
+                        details.classList.add('visible');
+                        this.classList.add('active');
+                        currentOpen = details;
+                        
+                        // Scroll into view if needed
+                        setTimeout(function() {
+                            details.scrollIntoView({behavior: "smooth", block: "nearest"});
+                        }, 300);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
