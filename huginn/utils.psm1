@@ -144,3 +144,32 @@ function Update-Client {
     }
 
 }
+function Update-ClientVerbose {
+    # Create a new logger instance
+    $logger = [UpdateLogger]::new()
+    
+    $FilePaths = Get-RemoteIndexPaths
+    $FileURIs = Get-RemoteIndexURIs
+    
+    # Initialize the update process
+    $logger.StartUpdate($FileURIs.Length)
+    
+    for ($i = 0; $i -lt $FileURIs.Length; $i++) {
+        # Log pending status
+        $logger.LogFileStatus($FilePaths[$i], "Pending")
+        Start-Sleep -Milliseconds 100  # Small delay for visual effect
+        
+        # Log downloading status
+        $logger.LogFileStatus($FilePaths[$i], "Downloading")
+        
+        # Perform the actual download
+        Invoke-WebRequest -Uri $FileURIs[$i] -OutFile $FilePaths[$i]
+        
+        # Log completed status
+        $logger.LogFileStatus($FilePaths[$i], "Downloaded")
+        Start-Sleep -Milliseconds 200  # Small delay for visual effect
+    }
+    
+    # Complete the update process
+    $logger.CompleteUpdate()
+}
