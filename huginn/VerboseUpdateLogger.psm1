@@ -21,7 +21,8 @@ class UpdateLogger {
     [int]$totalFiles = 0
     [bool]$smsFixed = $false
     [System.Collections.Queue]$warningMessages
-    [int]$warningInterval = 3  # Show a warning every N files
+    [int]$warningInterval = 1  # Show a warning every N files
+    [string]$lastStatus = ""
     
     UpdateLogger() {
         # Initialize screens in different regions
@@ -75,8 +76,16 @@ class UpdateLogger {
         $this.warningScreen.Clear()
         
         $this.mainScreen.push_down("=== Update Process Started ===")
-        $this.statusScreen.push_down("Files to process: $fileCount")
+        $this.UpdateStatus("Files to process: $fileCount")
         $this.ProcessNextWarning()
+    }
+    
+    [void]UpdateStatus([string]$status) {
+        if ($status -ne $this.lastStatus) {
+            #$this.statusScreen.Clear()
+            $this.statusScreen.push_down($status)
+            $this.lastStatus = $status
+        }
     }
     
     [void]LogFileStatus([string]$file, [string]$status) {
@@ -86,11 +95,11 @@ class UpdateLogger {
             
             $this.updateCount++
             $progress = [math]::Round(($this.updateCount / $this.totalFiles) * 100)
-            #$this.statusScreen.Clear()
-            $this.statusScreen.push_down("Progress: $progress%")
-            $this.statusScreen.push_down("Files processed: $($this.updateCount)/$($this.totalFiles)")
             
-            # Show warning every N files instead of randomly
+            # Update status with both progress and file count
+            $this.UpdateStatus("Progress: $progress%`nFiles processed: $($this.updateCount)/$($this.totalFiles)")
+            
+            # Show warning every N files
             if ($this.updateCount % $this.warningInterval -eq 0) {
                 $this.ProcessNextWarning()
             }
@@ -102,10 +111,8 @@ class UpdateLogger {
             $warning = $this.warningMessages.Dequeue()
             $this.warningScreen.push_down($warning)
             
-            # If this is the last message, SMS is fixed
             if ($this.warningMessages.Count -eq 0) {
                 $this.smsFixed = $true
-                #Start-Sleep -Milliseconds 10
                 $this.warningScreen.push_down("")
                 $this.warningScreen.push_down("${script:GREEN_FG}All systems nominal${script:RESET_FMT}")
             }
@@ -115,9 +122,9 @@ class UpdateLogger {
     [void]CompleteUpdate() {
         $this.mainScreen.push_down("")
         $this.mainScreen.push_down("=== Update Process Completed ===")
-        #$this.statusScreen.Clear()
-        $this.statusScreen.push_down("Final Status: Complete")
-        $this.statusScreen.push_down("Total files processed: $($this.totalFiles)")
+        
+        $finalStatus = "Final Status: Complete`nTotal files processed: $($this.totalFiles)"
+        $this.UpdateStatus($finalStatus)
         
         if (-not $this.smsFixed) {
             while ($this.warningMessages.Count -gt 0) {
