@@ -84,7 +84,7 @@ class UpdateLogger {
             
             $this.updateCount++
             $progress = [math]::Round(($this.updateCount / $this.totalFiles) * 100)
-            $this.statusScreen.Clear()
+            #$this.statusScreen.Clear()
             $this.statusScreen.push_down("Progress: $progress%")
             $this.statusScreen.push_down("Files processed: $($this.updateCount)/$($this.totalFiles)")
             
@@ -113,7 +113,7 @@ class UpdateLogger {
     [void]CompleteUpdate() {
         $this.mainScreen.push_down("")
         $this.mainScreen.push_down("=== Update Process Completed ===")
-        $this.statusScreen.Clear()
+        #$this.statusScreen.Clear()
         $this.statusScreen.push_down("Final Status: Complete")
         $this.statusScreen.push_down("Total files processed: $($this.totalFiles)")
         
