@@ -3,6 +3,7 @@
 using module '.\debug.psm1'
 using module '.\src\ScreenManager.psm1'
 using module '.\huginn\utils.psm1'
+using module '.\huginn\VerboseUpdateLogger.psm1'
 
 $REMOTE_VERSION = Query-RemoteManifest -Parameter 'VERSION'
 $LOCAL_VERSION = Query-Parameter -File '.\MANIFEST' -Parameter 'VERSION'
@@ -12,7 +13,7 @@ $DEBUG = $false
 # We don't have git, so I'll just handroll something
 if ($LOCAL_VERSION -lt $REMOTE_VERSION) {
     
-    Update-Client
+    Update-ClientVerbose
 
     #$UpdateClient = Monitored_Start -Process 'powershell' -Args '-ExecutionPolicy Bypass -File .\Update.ps1'
     #
