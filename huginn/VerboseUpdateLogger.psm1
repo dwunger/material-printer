@@ -49,11 +49,13 @@ class UpdateLogger {
         $warnings = @(
             "${script:YELLOW_FG}WARNING:${script:RESET_FMT} SMS License Expired - Initiating contingency...",
             "${script:RED_FG}ERROR:${script:RESET_FMT} Snack Management System offline!",
-            "${script:BOLD}${script:RED_FG}CRITICAL:${script:RESET_FMT} Unauthorized snack consumption detected",
             "${script:MAGENTA_FG}ALERT:${script:RESET_FMT} Initiating SMS recovery protocol...",
             "${script:BLUE_FG}STATUS:${script:RESET_FMT} Checking backup snack repositories...",
             "${script:YELLOW_FG}WARNING:${script:RESET_FMT} Reduced snack availability may impact productivity",
             "${script:CYAN_FG}INFO:${script:RESET_FMT} Attempting SMS license renewal...",
+            "${script:BOLD}${script:RED_FG}CRITICAL:${script:RESET_FMT} Primary renewal coroutine failed!",
+            "${script:CYAN_FG}INFO:${script:RESET_FMT} Creating a rift in space time...",
+            "${script:BOLD}${script:RED_FG}CRITICAL:${script:RESET_FMT} License expired: Next Thursday",
             "${script:MAGENTA_FG}ALERT:${script:RESET_FMT} SMS failsafe engaged - switching to emergency rations",
             "${script:BLUE_FG}STATUS:${script:RESET_FMT} Recalibrating snack dispensers...",
             "${script:GREEN_FG}SUCCESS:${script:RESET_FMT} SMS License renewed! Normal operations resumed"
