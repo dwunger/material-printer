@@ -103,7 +103,7 @@ class UpdateLogger {
             # If this is the last message, SMS is fixed
             if ($this.warningMessages.Count -eq 0) {
                 $this.smsFixed = $true
-                Start-Sleep -Milliseconds 10
+                #Start-Sleep -Milliseconds 10
                 $this.warningScreen.push_down("")
                 $this.warningScreen.push_down("${script:GREEN_FG}All systems nominal${script:RESET_FMT}")
             }
