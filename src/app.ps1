@@ -55,7 +55,12 @@ $RED_FG = "$ESC[91m"
 $GREEN_FG = "$ESC[92m"
 
 $GRAY_BG = "$ESC[47m" 
-$BLACK_FG = "$ESC[30m" 
+$BLACK_FG = "$ESC[30m"
+
+$LEFT_ARROW = [char]0x2190
+$DOWN_ARROW = [char]0x2193
+$UP_ARROW = [char]0x2191
+$RIGHT_ARROW = [char]0x2192
 
 # CMA if in debug mode:
 if ($DISABLE_PRINT){
@@ -625,7 +630,7 @@ function select-printer() {
     Clear-Host
     # Initialize display
     $global:display = [Display]::new(15)
-    $menu_controls = "(Controls: ← or 'b' - Back | ↓ - Down | ↑ - Up | → or [Enter] - Select)"
+    $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
 
     $global:display.setFooter(@("", $menu_controls))
     # Initialize PrinterManager
@@ -672,7 +677,7 @@ $global:is_open = $false
 
 function refresh-display-helper($menu_controls, $state_controls, $global:VERSION) {
     $global:display = [Display]::new(18)
-    $menu_controls = "Menu Controls: ← - Back | ↓ - Down | ↑ - Up | → or [Enter] - Select";
+    $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
     $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue", $global:VERSION))
@@ -706,7 +711,7 @@ function Lock-CS2500-Open-Status {
 # Helper function for refreshing the display
 function Refresh-Display {
     $global:display = [Display]::new(18)
-    $menu_controls = "Menu Controls: ← - Back | ↓ - Down | ↑ - Up | → or [Enter] - Select";
+    $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
     $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue", $global:VERSION))
@@ -741,7 +746,7 @@ function main() {
     $instrument_select_array = $materialGroupsByInstrument.Keys | Sort-Object
 
     $global:display = [Display]::new(18)
-    $menu_controls = "Menu Controls: ← - Back | ↓ - Down | ↑ - Up | → or [Enter] - Select";
+    $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
     $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue", $global:VERSION))
