@@ -622,6 +622,9 @@ function Handle-KeyInput {
     elseif ($key.VirtualKeyCode -eq 70) { # 'f' key
         return "flush-queue"
     }
+    elseif ($key.VirtualKeyCode -eq 82) { # 'r' key
+        return "resource-config"
+    }
     return "continue"
 }
 
@@ -680,7 +683,7 @@ function refresh-display-helper($menu_controls, $state_controls, $global:VERSION
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
-    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue", $global:VERSION))
+    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config", $global:VERSION))
 }
 
 function open_helper() {
@@ -714,7 +717,7 @@ function Refresh-Display {
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
-    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue", $global:VERSION))
+    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config", $global:VERSION))
     $global:side_pane.DISABLE_REFRESH = $false
     $global:side_pane.redraw()
     $global:side_pane.draw_border()
@@ -749,7 +752,7 @@ function main() {
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
-    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue", $global:VERSION))
+    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config", $global:VERSION))
 
     $instrument_menu_selection = 0
     $selected_group_index = 0
@@ -849,6 +852,18 @@ function main() {
                     {
                         if ($global:QueuePending) {
                             flush-queue($selected_material)
+                        }
+                    }
+                    "resource-config" 
+                    
+                    {
+                        $browser = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+                        $link = 'https://docs.google.com/spreadsheets/d/15leQ_Hy9kxP_PmoBwOqyDEln9Vvy5Bpilqm4LrJ56lE/edit?usp=sharing'
+                        if (Test-Path $browser) {
+                            $global:side_pane.push_down("Launching Edge...")
+                            & $browser $link # Requires the invocation operator
+                        } else {
+                            $global:side_pane.push_down("[ERROR] Browser unavailable.")
                         }
                     }
                }
