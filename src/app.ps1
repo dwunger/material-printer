@@ -1,6 +1,7 @@
 ﻿using module '.\Materials.psm1' 
 using module '.\ScreenManager.psm1'
 using module '..\huginn\utils.psm1'
+using module '..\muginn\utils.psm1'
 
 #TODOs
 # Printer configuration setup file (IP address, print method (xylene/standard))
@@ -625,6 +626,9 @@ function Handle-KeyInput {
     elseif ($key.VirtualKeyCode -eq 82) { # 'r' key
         return "resource-config"
     }
+    elseif ($key.VirtualKeyCode -eq 77) { # 'm' key
+        return "muginn"
+    }
     return "continue"
 }
 
@@ -683,7 +687,7 @@ function refresh-display-helper($menu_controls, $state_controls, $global:VERSION
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
-    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config", $global:VERSION))
+    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config | 'm' - Muginn", $global:VERSION))
 }
 
 function open_helper() {
@@ -717,7 +721,7 @@ function Refresh-Display {
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
-    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config", $global:VERSION))
+    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config | 'm' - Muginn", $global:VERSION))
     $global:side_pane.DISABLE_REFRESH = $false
     $global:side_pane.redraw()
     $global:side_pane.draw_border()
@@ -752,7 +756,7 @@ function main() {
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
-    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config", $global:VERSION))
+    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config | 'm' - Muginn", $global:VERSION))
 
     $instrument_menu_selection = 0
     $selected_group_index = 0
@@ -855,7 +859,6 @@ function main() {
                         }
                     }
                     "resource-config" 
-                    
                     {
                         $browser = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
                         $link = 'https://docs.google.com/spreadsheets/d/15leQ_Hy9kxP_PmoBwOqyDEln9Vvy5Bpilqm4LrJ56lE/edit?usp=sharing'
@@ -865,6 +868,14 @@ function main() {
                         } else {
                             $global:side_pane.push_down("[ERROR] Browser unavailable.")
                         }
+                    }
+                    "muginn" 
+                    {
+                        $global:side_pane.push_down("Enter Printer Name:")
+                        $addr = Read-Host
+                        $global:side_pane.push_down("Muginn busy...")
+                        $value = Get-Darkness -printerIp $addr
+                        $global:side_pane.push_down($value)
                     }
                }
            }

@@ -1,3 +1,13 @@
+function Ensure-Path {
+    param (
+        [string] $path
+    )
+
+    if (-not (Test-Path -Path (Split-Path -Path $path -Parent))) {
+        mkdir (Split-Path -Path $path -Parent)
+    }
+
+}
 
 function Walk-Path ([string] $Path) {
     return Walk-PathHelper -Path $Path -BasePath $Path
@@ -75,6 +85,7 @@ function Query-RemoteManifest {
     $ManifestURI = Convert-PathtoURI -Path "MANIFEST"
     $TempFile = [System.IO.Path]::GetTempFileName()
 
+    Ensure-Path $TempFile
     # This is merely an observer. It shouldn't be overwriting the local manifest, just observing the remote.
     # We'll write to a temp file then use Query-Parameter to get the version information
     Invoke-WebRequest -Uri $ManifestURI -OutFile $TempFile
@@ -140,6 +151,7 @@ function Update-Client {
     $FileURIs = Get-RemoteIndexURIs
 
     for ($i = 0; $i -lt $FileURIs.Length; $i++) {
+        Ensure-Path $FilePaths[$i]
         Invoke-WebRequest -Uri $FileURIs[$i] -OutFile $FilePaths[$i]
     }
 
@@ -162,6 +174,8 @@ function Update-ClientVerbose {
         # Log downloading status
         $logger.LogFileStatus($FilePaths[$i], "Downloading")
         
+        Ensure-Path $FilePaths[$i]
+
         # Perform the actual download
         Invoke-WebRequest -Uri $FileURIs[$i] -OutFile $FilePaths[$i]
         
