@@ -1,7 +1,7 @@
 ﻿using module '.\Materials.psm1' 
 using module '.\ScreenManager.psm1'
 using module '..\huginn\utils.psm1'
-using module '..\muginn\utils.psm1'
+using module '.\muginn.psm1'
 
 #TODOs
 # Printer configuration setup file (IP address, print method (xylene/standard))
