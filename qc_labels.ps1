@@ -11,8 +11,7 @@ $REMOTE_VERSION = Query-RemoteManifest -Parameter 'VERSION'
 $LOCAL_VERSION = Query-Parameter -File '.\MANIFEST' -Parameter 'VERSION'
 
 $DEBUG = $false
-
-if (-not Test-Path '.\muginn') { mkdir '.\muginn' } # Since we can't force incremental version updates
+if (-not (Test-Path '.\muginn')) { mkdir '.\muginn' } # Since we can't force incremental version updates
 
 # We don't have git, so I'll just handroll something
 if ($LOCAL_VERSION -lt $REMOTE_VERSION) {
