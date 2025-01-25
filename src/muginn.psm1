@@ -1,19 +1,32 @@
-function Get-Darkness() {
+function Extract-Float {
+    param([string] $Value)
+
+    # Remove everything not part of a float:
+    $cleaned = $Value -replace '[^0-9.\+\-]', ''
+
+    if ($cleaned -match '^[+-]?\d+(\.\d+)?$') {
+        return [double]$cleaned
+    }
+    else {
+        return $null
+    }
+}
+
+function Get-Darkness {
     param(
         [string] $printerIP
     )
-   
-    $printerPort = 9100
-    $timeoutMilliseconds = 1000 # who's got time for that
 
+    $printerPort = 9100
+    $timeoutMilliseconds = 1000
     $tcpClient = New-Object System.Net.Sockets.TcpClient
     $tcpClient.ReceiveTimeout = $timeoutMilliseconds
     $tcpClient.SendTimeout = $timeoutMilliseconds
+
     try {
         $asyncResult = $tcpClient.BeginConnect($printerIP, $printerPort, $null, $null)
         if ($asyncResult.AsyncWaitHandle.WaitOne($timeoutMilliseconds, $false)) {
             $tcpClient.EndConnect($asyncResult)
-
             $stream = $tcpClient.GetStream()
 
             $zplCommand = "^XA^HH^XZ"
@@ -27,25 +40,28 @@ function Get-Darkness() {
             if ($asyncRead.AsyncWaitHandle.WaitOne($timeoutMilliseconds, $false)) {
                 $bytesRead = $stream.EndRead($asyncRead)
                 if ($bytesRead -gt 0) {
-                    Write-Host $printerIP
                     $response = [System.Text.Encoding]::ASCII.GetString($buffer, 0, $bytesRead)
-                    $darkness = $response | findstr "DARKNESS"
-                    Write-Host $darkness
-                    Write-Host ';'
-                } else {
-                    # pass
-                }
-            } else {
-                # pass
-            }
 
+                    $darknessLines = $response | findstr "DARKNESS"
+
+                    foreach ($line in $darknessLines) {
+                        # Possibly print the line to debug:
+                        # Write-Host "Line: $line"
+
+                        $val = Extract-Float $line
+                        if ($val -ne $null) {
+                            return $val
+                        }
+                    }
+                }
+            }
             $stream.Close()
-        } else {
-            $tcpClient.Close()
         }
-    } catch {
+    }
+    catch {
         Write-Host "Error: $_"
-    } finally {
+    }
+    finally {
         $tcpClient.Close()
     }
 }
