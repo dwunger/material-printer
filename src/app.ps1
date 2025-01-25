@@ -1,4 +1,4 @@
-﻿using module '.\Materials.psm1' 
+using module '.\Materials.psm1' 
 using module '.\ScreenManager.psm1'
 using module '..\huginn\utils.psm1'
 using module '.\muginn.psm1'
@@ -148,6 +148,7 @@ function Search-Between {
 
     return $haystack.Substring($start_idx, $end_idx - $start_idx)
 }
+
 
 
 ###########################
@@ -897,11 +898,12 @@ function main() {
                     "muginn" 
                     {
                         $global:side_pane.push_down($CYAN_FG + "Enter Printer Name:")
+                        [console]::SetCursorPosition(0,19)
                         $addr = Read-Host
                         $global:side_pane.push_down($CYAN_FG + "Muginn busy...")
                         $value = Get-Darkness -printerIp $addr
-                        $value = Search-Between -haystack $value -start "+" -end " "
                         $global:side_pane.push_down($BOLD + "Darkness: $value")
+                        
                     }
                }
            }
