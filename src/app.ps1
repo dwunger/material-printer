@@ -54,6 +54,7 @@ $RESET_FMT = "$ESC[0m"
 
 $RED_FG = "$ESC[91m"
 $GREEN_FG = "$ESC[92m"
+$CYAN_FG = "$ESC[96m"
 
 $GRAY_BG = "$ESC[47m" 
 $BLACK_FG = "$ESC[30m"
@@ -125,7 +126,31 @@ function abs($value) {
 
 ####################################################################################################################################################
 
+######STRING VIEW##########
+function Search-Between {
+    param (
+        [string] $haystack,
+        [string] $start,
+        [string] $end
+    )
 
+    $start_idx = $haystack.IndexOf($start)
+    if ($start_idx -eq -1) {
+        return ""
+    }
+    # Move just past the $start sequence
+    $start_idx += $start.Length
+
+    $end_idx = $haystack.IndexOf($end, $start_idx)
+    if ($end_idx -eq -1) {
+        return ""
+    }
+
+    return $haystack.Substring($start_idx, $end_idx - $start_idx)
+}
+
+
+###########################
 
 
 ##################################################################### MENUS #########################################################################
@@ -871,11 +896,12 @@ function main() {
                     }
                     "muginn" 
                     {
-                        $global:side_pane.push_down("Enter Printer Name:")
+                        $global:side_pane.push_down($CYAN_FG + "Enter Printer Name:")
                         $addr = Read-Host
-                        $global:side_pane.push_down("Muginn busy...")
+                        $global:side_pane.push_down($CYAN_FG + "Muginn busy...")
                         $value = Get-Darkness -printerIp $addr
-                        $global:side_pane.push_down($value)
+                        $value = Search-Between -haystack $value -start "+" -end " "
+                        $global:side_pane.push_down($BOLD + "Darkness: $value")
                     }
                }
            }
