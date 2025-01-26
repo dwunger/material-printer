@@ -169,7 +169,6 @@ function Update-ClientVerbose {
     for ($i = 0; $i -lt $FileURIs.Length; $i++) {
         # Log pending status
         $logger.LogFileStatus($FilePaths[$i], "Pending")
-        Start-Sleep -Milliseconds 100  # Small delay for visual effect
         
         # Log downloading status
         $logger.LogFileStatus($FilePaths[$i], "Downloading")
@@ -181,7 +180,6 @@ function Update-ClientVerbose {
         
         # Log completed status
         $logger.LogFileStatus($FilePaths[$i], "Downloaded")
-        Start-Sleep -Milliseconds 200  # Small delay for visual effect
     }
     
     # Complete the update process
