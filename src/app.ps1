@@ -773,13 +773,16 @@ function Muginn {
 
     $Screen = [StackScreen]::new(0,18, $screen_width, $screen_height)
     $Screen.draw_border()
-
     
     $Screen.push_down($CYAN_FG + "Enter Printer Name:")
-
+    
     [console]::SetCursorPosition(21,19)
     $addr = Read-Host
+    
+    $junk = $Screen.pop()
+    $Screen.push_down($CYAN_FG + "Enter Printer Name:" + $addr)
     $Screen.push_down($CYAN_FG + "Muginn busy...")
+    
     $value = Get-Darkness -printerIp $addr
     $Screen.push_down($BOLD + "Darkness: $value")
 }
