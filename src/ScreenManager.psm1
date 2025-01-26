@@ -18,8 +18,8 @@ function Set-Window-Dimensions {
         [int] $height
     )
     
-    Write-Host "Width: $width"
-    Write-Host "Height: $height"
+    #Write-Host "Width: $width"
+    #Write-Host "Height: $height"
     
     # Validate input parameters
     if ($width -le 0) {
