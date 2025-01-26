@@ -302,19 +302,20 @@ class StackScreen : Screen {
     }
 
     [string] pop() {
-        if ($this.content.Count -eq 0) {
-            return $null
-        }
-
-        # Remove the top line and store it
+        if ($this.content.Count -eq 0) { return $null }
+        
         $popped_line = $this.content[0]
-        $this.content = $this.content[1..($this.content.Count - 1)]
-
-        # Clear the screen (except borders)
+        
+        # Special case for last item
+        if ($this.content.Count -eq 1) {
+            $this.content = @()
+        } else {
+            $this.content = $this.content[1..($this.content.Count - 1)]
+        }
+    
         $this.Fill(" ", 1, 1, $this.width - 2, $this.height - 2)
-
-        $this.Redraw() 
-
+        $this.Redraw()
+        
         return $popped_line
     }
 
