@@ -751,6 +751,37 @@ function Refresh-Display {
     $global:side_pane.DISABLE_REFRESH = $false
     $global:side_pane.redraw()
     $global:side_pane.draw_border()
+
+}
+
+function Muginn-Old {
+    $global:side_pane.push_down($CYAN_FG + "Enter Printer Name:")
+    [console]::SetCursorPosition(0,19)
+    $addr = Read-Host
+    $global:side_pane.push_down($CYAN_FG + "Muginn busy...")
+    $value = Get-Darkness -printerIp $addr
+    $global:side_pane.push_down($BOLD + "Darkness: $value")
+}
+
+function Muginn {
+    $screen_height = 10
+    $screen_width = 69
+
+    #Need to expand the console to fit muginn
+    Set-Window-Dimensions -width 105 -height (20 + $screen_height)
+
+
+    $Screen = [StackScreen]::new(0,18, $screen_width, $screen_height)
+    $Screen.draw_border()
+
+    
+    $Screen.push_down($CYAN_FG + "Enter Printer Name:")
+
+    [console]::SetCursorPosition(0,19)
+    $addr = Read-Host
+    $Screen.push_down($CYAN_FG + "Muginn busy...")
+    $value = Get-Darkness -printerIp $addr
+    $Screen.push_down($BOLD + "Darkness: $value")
 }
 
 
@@ -897,12 +928,7 @@ function main() {
                     }
                     "muginn" 
                     {
-                        $global:side_pane.push_down($CYAN_FG + "Enter Printer Name:")
-                        [console]::SetCursorPosition(0,19)
-                        $addr = Read-Host
-                        $global:side_pane.push_down($CYAN_FG + "Muginn busy...")
-                        $value = Get-Darkness -printerIp $addr
-                        $global:side_pane.push_down($BOLD + "Darkness: $value")
+                        Muginn
                         
                     }
                }
