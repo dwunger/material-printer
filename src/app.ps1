@@ -777,7 +777,7 @@ function Muginn {
     
     $Screen.push_down($CYAN_FG + "Enter Printer Name:")
 
-    [console]::SetCursorPosition(0,19)
+    [console]::SetCursorPosition(21,19)
     $addr = Read-Host
     $Screen.push_down($CYAN_FG + "Muginn busy...")
     $value = Get-Darkness -printerIp $addr
