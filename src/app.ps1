@@ -54,6 +54,7 @@ $RESET_FMT = "$ESC[0m"
 
 $RED_FG = "$ESC[91m"
 $GREEN_FG = "$ESC[92m"
+$YELLOW_FG = "$ESC[93m"
 $CYAN_FG = "$ESC[96m"
 
 $GRAY_BG = "$ESC[47m" 
@@ -68,6 +69,9 @@ $RIGHT_ARROW = [char]0x2192
 if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
+
+$STARTUP_LOGMSG = "- Huggin's flight feathers`n  have been preened.*`n- Muginn has joined`n  the flock.`n- Corvids scavenged`n  many a bug."
+$STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 
 # Import-Module command with detailed parameter explanation
 
@@ -655,6 +659,9 @@ function Handle-KeyInput {
     elseif ($key.VirtualKeyCode -eq 77) { # 'm' key
         return "muginn"
     }
+    elseif ($key.VirtualKeyCode -eq 85) { # 'u' key
+        return "update"
+    }
     return "continue"
 }
 
@@ -798,6 +805,9 @@ function main() {
     $global:side_pane.draw_border()
 
     $global:side_pane.push_down("Local version: " + $global:VERSION)
+    $global:side_pane.push_down($YELLOW_FG + $STARTUP_LOGMSG)
+
+
     $global:startup = $true
     $printerManager = [PrinterManager]::new("./src/printer_config.csv")
     $global:printerIp = $printerManager.DefaultPrinterIp
@@ -823,7 +833,8 @@ function main() {
     $selected_material_index = 0
 
     # Interactive menu loop
-    while ($true) {
+    while ($true) 
+    {
 
         # Unlock open status at menu root
         if ((($selected_instrument -eq "CS2500") -or ($selected_instrument -eq "Core Lab")) -and ($global:menu_level -eq $INSTRUMENT_SELECT)) {
@@ -934,12 +945,14 @@ function main() {
                         Muginn
                         
                     }
-               }
+                    "update"
+                    {
+                        Update-Client
+                        exit
+                    }
            }
-
-        
+        }
     }
-
     return 0
 }
 main
