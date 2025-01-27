@@ -43,6 +43,8 @@ $REAGENT_NAMES = 2;
 $EXPIRATION_TYPE = 3;
 $STABILITY_TIME = 4;
 
+
+$PrimaryDisplayHeight = 18
 #####################################END CONSTANTS#########################################
 #this shouldn't exist. I don't want to test removing PrinterManager instances, so c'est la vie
 $global:startup = $false
@@ -592,7 +594,7 @@ function Select-Instrument {
         [array]$instrument_select_array,
         [Display]$display
     )
-    $display.setHeader(@("QC Material Label Printer".PadRight(67), "$global:open_status_message", "Select an instrument:"))
+    $display.setHeader(@("QC Material Label Printer".PadRight(71), "$global:open_status_message", "Select an instrument:"))
     $menu = [Menu]::new($instrument_select_array, $display)
     $menu.DisplayMenu()
     $userKey = $global:Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
@@ -605,7 +607,7 @@ function Select-MaterialGroup {
         [array]$material_groups,
         [Display]$display
     )
-    $display.setHeader(@("QC Material Label Printer".PadRight(67), "$global:open_status_message", "Select a category:"))
+    $display.setHeader(@("QC Material Label Printer".PadRight(71), "$global:open_status_message", "Select a category:"))
     $menu_array = $material_groups | ForEach-Object { $_.group_name }
     $menu = [Menu]::new($menu_array, $display)
     $menu.DisplayMenu()
@@ -620,7 +622,7 @@ function Select-Material {
         [Display]$display
     )
     #$display.setHeader(@(($GRAY_BG + $BLACK_FG + $UNDERLINE + ("$QC Material Label Printer".PadRight(40)) + $RESET_FMT), "$global:open_status_message", "Select a reagent to print:"))
-    $display.setHeader(@("QC Material Label Printer".PadRight(67), "$global:open_status_message", "Select a reagent to print:"))
+    $display.setHeader(@("QC Material Label Printer".PadRight(71), "$global:open_status_message", "Select a reagent to print:"))
     $menu_array = $selected_group.materials_list | ForEach-Object { $_.name }
     $menu = [Menu]::new($menu_array, $display)
     $menu.DisplayMenu()
@@ -684,8 +686,8 @@ function select-printer() {
     # Main Interactive Menu/Print loop
     while ($true) {
 
-        $global:display.setHeader(@("QC Material Label Printer".PadRight(70), "", "Select a printer:"))
-        #$global:display.setHeader(@((($GRAY_BG + $BLACK_FG + $UNDERLINE + ("$QC Material Label Printer".PadRight(67))) + $RESET_FMT), "", "Select a printer:"))
+        $global:display.setHeader(@("QC Material Label Printer".PadRight(71), "", "Select a printer:"))
+        #$global:display.setHeader(@((($GRAY_BG + $BLACK_FG + $UNDERLINE + ("$QC Material Label Printer".PadRight(71))) + $RESET_FMT), "", "Select a printer:"))
         $menu.DisplayMenu()
 
         $userKey = $global:Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
@@ -720,7 +722,7 @@ function refresh-display-helper($menu_controls, $state_controls, $global:VERSION
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
-    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config | 'm' - Muginn", $global:VERSION))
+    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config | 'm' - Muginn | 'u' - Update", $global:VERSION))
 }
 
 function open_helper() {
@@ -750,11 +752,11 @@ function Lock-CS2500-Open-Status {
 
 # Helper function for refreshing the display
 function Refresh-Display {
-    $global:display = [Display]::new(18)
+    $global:display = [Display]::new($PrimaryDisplayHeight)
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
-    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config | 'm' - Muginn", $global:VERSION))
+    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config | 'm' - Muginn | 'u' - Update", $global:VERSION))
     $global:side_pane.DISABLE_REFRESH = $false
     $global:side_pane.redraw()
     $global:side_pane.draw_border()
@@ -772,13 +774,13 @@ function Muginn-Old {
 
 function Muginn {
     $screen_height = 10
-    $screen_width = 69
+    $screen_width = 71
 
     #Need to expand the console to fit muginn
-    Set-Window-Dimensions -width 105 -height (20 + $screen_height)
+    Set-Window-Dimensions -width 108 -height (20 + $screen_height)
 
 
-    $Screen = [StackScreen]::new(0,18, $screen_width, $screen_height)
+    $Screen = [StackScreen]::new(0,$PrimaryDisplayHeight, $screen_width, $screen_height)
     $Screen.draw_border()
     
     $Screen.push_down($CYAN_FG + "Enter Printer Name:")
@@ -798,10 +800,13 @@ function Muginn {
 function main() {
     
     #Set-Window-Dimensions -width 69 -height 20 # Without side pane
-    Set-Window-Dimensions -width 105 -height 20 # With side pane
+    #Set-Window-Dimensions -width 105 -height 20 # With side pane
+    Set-Window-Dimensions -width 107 -height 20 # With side pane
     Clear-Host
 
-    $global:side_pane = [StackScreen]::new(67,0,34,18)
+    #$global:side_pane = [StackScreen]::new(67,0,34,18)
+    $global:side_pane = [StackScreen]::new(71,0,34,$PrimaryDisplayHeight)
+
     $global:side_pane.draw_border()
 
     $global:side_pane.push_down("Local version: " + $global:VERSION)
@@ -822,11 +827,11 @@ function main() {
     $global:menu_level = $INSTRUMENT_SELECT
     $instrument_select_array = $materialGroupsByInstrument.Keys | Sort-Object
 
-    $global:display = [Display]::new(18)
+    $global:display = [Display]::new($PrimaryDisplayHeight)
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
-    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config | 'm' - Muginn", $global:VERSION))
+    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config | 'm' - Muginn | 'u' - Update", $global:VERSION))
 
     $instrument_menu_selection = 0
     $selected_group_index = 0
@@ -948,6 +953,7 @@ function main() {
                     "update"
                     {
                         Update-Client
+                        Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\app.ps1"' -NoNewWindow
                         exit
                     }
            }
