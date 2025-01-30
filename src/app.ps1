@@ -784,7 +784,7 @@ function Muginn {
     $Screen.push_down($CYAN_FG + "s - Set Darkness")
     $Screen.push_down($CYAN_FG + "g - Get Darkness")
     
-    [console]::SetCursorPosition(0,21)
+    [console]::SetCursorPosition(1,21)
     [char] $user_input = Read-Host
 
     $junk = $Screen.pop()
