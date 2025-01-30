@@ -778,19 +778,50 @@ function Muginn {
 
     #Need to expand the console to fit muginn
     Set-Window-Dimensions -width 108 -height (20 + $screen_height)
-
-
     $Screen = [StackScreen]::new(0,$PrimaryDisplayHeight, $screen_width, $screen_height)
     $Screen.draw_border()
+
+    $Screen.push_down($CYAN_FG + "s - Set Darkness")
+    $Screen.push_down($CYAN_FG + "g - Get Darkness")
     
+    [console]::SetCursorPosition(0,21)
+    [char] $user_input = Read-Host
+
+    $junk = $Screen.pop()
+    $junk = $Screen.pop()
+
+    if ($user_input -notin ('g','s')) { return } 
+
     $Screen.push_down($CYAN_FG + "Enter Printer Name:")
-    
+
     [console]::SetCursorPosition(21,19)
     $addr = Read-Host
-    
     $junk = $Screen.pop()
+
     $Screen.push_down($CYAN_FG + "Enter Printer Name:" + $addr)
+    $junk = $Screen.pop()
+
+    switch ($user_input) {
+        "g" 
+        {  
+            $DarknessSetting = Get-Darkness -printerIP $addr
+        }
+        "s" 
+        {  
+            $Screen.push_down($CYAN_FG + "Enter darkness setting:")
+            [console]::SetCursorPosition(25,19)
+            $value = Read-Host
+            $DarknessSetting = Set-Darkness -printerIP $addr -value $value
+
+            $junk = $Screen.pop()
+
+        }
+
+    }
+
+
     $Screen.push_down($CYAN_FG + "Muginn busy...")
+    
     
     $value = Get-Darkness -printerIp $addr
     $Screen.push_down($BOLD + "Darkness: $value")
