@@ -278,13 +278,7 @@ class Material {
         # This Builds a label string based on material properties incrementally
         $TIME_FMT = 'hh:mm'
         
-
-
-        if ($this.instrument -eq "CS2500") {
-            $DATE_FMT = 'MM-dd-yy'
-        } else {
-            $DATE_FMT = 'MM-dd-yy'
-        }
+        $DATE_FMT = 'MM-dd-yy'
 
         $today = Get-Date
 
@@ -292,50 +286,29 @@ class Material {
         $eveningStart = [datetime]::ParseExact("8:00pm", "h:mmtt", $null)
         $eveningEnd = [datetime]::ParseExact("11:59pm", "h:mmtt", $null)
         if ((contains -haystack $this.name -needle "% Wash") -and (((Get-Date) -gt $eveningStart) -and ((Get-Date) -lt $eveningEnd))) {
-            #$global:side_pane.push_down($today)
             $today = $today.AddDays(1)
-
-            #$temp = (contains -haystack $this.name -needle "% Wash").ToString()
-            #$global:side_pane.push_down("Contains: " + $temp)
-            #$temp = ($today -gt $eveningStart).ToString()
-            #$global:side_pane.push_down("Evestart " + $temp)
-            #$temp = ($today -lt $eveningEnd).ToString()
-            #$global:side_pane.push_down("Eveend " + $temp)
-            #$global:side_pane.push_down($today)
             $global:side_pane.push_down("`nNotice: Rounding time forward`nto midnight for Wash`nSolution`n") 
 
         }
         $todays_date = $today.ToString($DATE_FMT)
         $todays_time = $today.ToString($TIME_FMT)
 
-        $label = ""
 
         # All labels
-        #$label += "      {0}`n" -f $this.name
         # Removed spacing to accommodate hematology labels with long names
-        $label += "{0}`n" -f $this.name
-
-        ###############
-        $this.name_string = "{0}`n" -f $this.name
-        ###############
+        $this.name_string = $this.name
 
         # Has reagent been opened?
         if ($open_state) {
-            ###############
-            $this.open_string = "   Open:{0}`n" -f $todays_date
-            ###############
-            $label += "   Open: {0}`n" -f $todays_date
+            $this.open_string = "   Open: $todays_date"
+            if ($global:printerIp -eq "127.0.0.1") {
+                $global:side_pane.push_down("$this")
+            }
             if ($this.instrument -eq "CS2500") {
-                $label += "           {0}`n" -f $todays_time
-                #############
-                $this.open_string += " {0}`n" -f $todays_time
-                #############
+                $this.open_string = "   Open: $todays_date $todays_time"
             }
         } else {
-            $label += "   Open:`n"
-            #############
-            $this.open_string = "   Open:`n"
-            #############
+            $this.open_string = "   Open:"
         }
 
         # HOW WAS IT PREPARED?
@@ -343,42 +316,27 @@ class Material {
         # Thawed
         if ($this.expiration_type -eq "Thawed")
         {
-            $label += "Thawed: {0}`n" -f $todays_date
-            #############
-            $this.preparation_string = "Thawed:{0}`n" -f $todays_date
-            #############
+            $this.preparation_string = "Thawed: $todays_date"
 
         }
         # Reconsistuted
         if ($this.expiration_type -eq "Reconstituted")
         {
-            $label += "Reconstituted: {0}`n" -f $todays_date
-            #############
-            $this.preparation_string = "Reconst:{0}`n" -f $todays_date
-            #############
+            $this.preparation_string = "Reconst: $todays_date"
             if ($this.instrument -eq "CS2500") {
-                #############
-                $this.preparation_string += " {0}`n" -f $todays_time
-                #############
-                $label += "          {0}`n" -f $todays_time
+                $this.preparation_string += " $todays_time"
             }
         }
         # Thaw&Open still writes a thaw date
         if ($this.expiration_type -eq "Thaw&open")
         {
-            $label += "Thawed: {0}`n" -f $todays_date
-            #############
-            $this.preparation_string = "Thawed:{0}`n" -f $todays_date
-            #############
+            $this.preparation_string = "Thawed: $todays_date"
         }
         # ====================
         # OPEN DATE DOES NOT DETERMINE EXPIRATION DATE
         if (($this.expiration_type -eq "Thawed") -or ($this.expiration_type -eq "Reconstituted"))
         {
-            $label += "     Exp:{0}`n" -f (((Get-Date).AddDays($this.stability_time)).ToString($DATE_FMT))
-            #############
-            $this.expiration_string = "  Exp:{0}`n" -f (((Get-Date).AddDays($this.stability_time)).ToString($DATE_FMT))
-            #############
+            $this.expiration_string = "  Exp:{0}" -f (((Get-Date).AddDays($this.stability_time)).ToString($DATE_FMT))
         }
         # OPEN DATE DETERMINES EXPIRATION
         if (($this.expiration_type -eq "Thaw&open") -or ($this.expiration_type -eq "Opened"))
@@ -386,46 +344,26 @@ class Material {
             
             if ($open_state) {
                 $label += "     Exp:{0}`n" -f (((Get-Date).AddDays($this.stability_time)).ToString($DATE_FMT))
-                #############
                 if ((contains -haystack $this.name -needle "100% Wash")) {
                     $today = Get-Date
                 }
-                $this.expiration_string = "     Exp:{0}`n" -f ((($today).AddDays($this.stability_time)).ToString($DATE_FMT))
-                #############
+                $this.expiration_string = "     Exp:{0}" -f ((($today).AddDays($this.stability_time)).ToString($DATE_FMT))
                 if ($this.instrument -eq "CS2500") {
-                    $label += "           {0}`n" -f $todays_time
-                    ###########
-                    $this.expiration_string = " {0}`n" -f $todays_time
-                    ############
+                    $this.expiration_string = " {0}" -f $todays_time
                 }
             } else {
                 $label += "     Exp:`n"
-                $label += "**Expires {0} days`n  from open date`n" -f $this.stability_time
-                ###########
-                $this.expiration_string = "     Exp:`n"
-                $this.remark_string_part_one = "**Expires {0} days`n" -f $this.stability_time
-                $this.remark_string_part_two = "  from open date`n"
-                ###########
+                $label += "**Expires {0} days`n  from open date" -f $this.stability_time
+                $this.expiration_string = "     Exp:"
+                $this.remark_string_part_one = "**Expires {0} days" -f $this.stability_time
+                $this.remark_string_part_two = "  from open date"
             }
         }
         if ($global:TEST_BUILD) {
             $label+= "[Test Version {0}]" -f $global:VERSION
         }
 
-
-        # RIGHT TRIM THEN PAD THE LABEL FOR CONCATENATION
-        $label = ($label -split "`n")
-        for ([int] $i = 0; $i -lt $label.Length; $i++) {
-            # Trim lines >19 chars (see label spec comment for details)
-            if ($label[$i].Length -gt 19) {
-                $label[$i] = $label[$i].Substring(0, 19)
-            }
-            # Rpad lines for label merging (include gap between labels)
-            #$label[$i] = $label[$i].PadRight(24)
-            #$label[$i] = $label[$i].PadRight(30)
-        }
-        $label = ($label -join "`n")
-    return $label
+        return $null
     }
 
     [Material] Clone() {
@@ -519,6 +457,10 @@ class MaterialGroup {
 
 function getMaterials {
     param ([string]$line)
+    # Constants for field indices
+    $MATERIAL_GROUP = 0
+    $INSTRUMENT = 1
+
     $_materials = @()
     $csv_list = ($line -split ";")
     $_material_group = $csv_list[$MATERIAL_GROUP]
