@@ -72,7 +72,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- Huginn's flight feathers`n  have been preened.*`n- Muginn has joined`n  the flock.`n- Corvids scavenged`n  many a bug."
+$STARTUP_LOGMSG = "- Fixed parser bug`n  affecting CS2500 materials`n- Refactored print `n  formatting method"
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 
 # Import-Module command with detailed parameter explanation
