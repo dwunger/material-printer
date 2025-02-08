@@ -16,11 +16,11 @@ BHB;DxC;BHBLOW,BHBHIGH;Opened;60,60;
 
 PT-INR     Reagents;CS2500;Innovin   - On Board,Innovin   - Refrigerated;Reconstituted;3,10;
 aPTT       Reagents;CS2500;Actin FSL - On Board,CaCl      - On Board,Actin FSL - Refrigerated,CaCl      - Refrigerated;Opened;3,3,7,56;
-D-Dimer    Reagents;CS2500;D-Dimer Rgt   - On Board,D-Dimer Rgt   - Refrigerated;Reconst/Opened;5,28;
+D-Dimer    Latex;CS2500;D-Dimer Rgt   - On Board,D-Dimer Rgt   - Refrigerated;Reconstituted;5,28;
+D-Dimer    Reagent;CS2500;D-Dimer Suppl - On Board,D-Dimer Suppl - Refrigerated,D-Dimer Dil   - On Board,D-Dimer Dil   - Refrigerated,D-Dimer Buf   - On Board,D-Dimer Buf   - Refrigerated;Opened;5,28,5,28,5,28;
+D-Dimer    Controls;CS2500;D-Dimer Ctrl - On Board,D-Dimer Ctrl - Refrigerated;Reconstituted;5,7;
 Thrombin   Reagent;CS2500;Thrombin   - On Board,Thrombin   - Refrigerated;Reconstituted;3,5;
 OVB        Reagent;CS2500;OVB      - On Board,OVB      - Refrigerated;Opened;1,56;
 Fibrinogen Control;CS2500;Abnormal Fibrinogen Ctrl;Reconstituted;1;
-D-Dimer    Controls;CS2500;D-Dimer Ctrl - On Board,D-Dimer Ctrl - Refrigerated;Reconstituted;5,7;
 Citrols;CS2500;Citrol 1    - On Board,Citrol 3    - On Board;Reconstituted;1,1;
 Clean I & II;CS2500;CA Clean I  - On Board,CA Clean II - On Board,CA Clean I  - Refrigerated,CA Clean II - Room Temp;Opened;5,5,30,60;
-
