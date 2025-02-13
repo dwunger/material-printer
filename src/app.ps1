@@ -72,7 +72,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- Fixed parser bug`n  affecting CS2500 materials`n- Refactored print `n  formatting method`n- Virtual printer`n  does something now!"
+$STARTUP_LOGMSG = "- 's' - Snek`n- Fixed parser bug`n  affecting CS2500 materials`n- Refactored print `n  formatting method`n- Virtual printer`n  does something now!"
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 
 # Import-Module command with detailed parameter explanation
@@ -664,6 +664,10 @@ function Handle-KeyInput {
     elseif ($key.VirtualKeyCode -eq 85) { # 'u' key
         return "update"
     }
+    elseif ($key.VirtualKeyCode -eq 83) { # 's' key
+        return "snek"
+    }
+
     return "continue"
 }
 
@@ -986,6 +990,11 @@ function main() {
                         Update-Client
                         Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\app.ps1"' -NoNewWindow
                         exit
+                    }
+                    "snek"
+                    {
+                        Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\BootStrapper.ps1" 2> error.txt' -NoNewWindow -Wait
+ 
                     }
            }
         }
