@@ -1,15 +1,23 @@
+$logFile = ".\error_log.txt"
 $sourceCode = Get-Content -Path ".\src\Main.cs" -Raw
 $assemblies = @("System.Drawing.dll", "System.Windows.Forms.dll")
+
 try {
     $assembly = Add-Type -TypeDefinition $sourceCode -Language CSharp -ReferencedAssemblies $assemblies -PassThru
     if ($assembly) {
         $mainClass = $assembly | Where-Object { $_.GetMethod("Main") }
         if ($mainClass) {
-            $mainClass::Main()
+            try {
+                $mainClass::Main()
+            } catch {
+                $_ | Out-File -FilePath $logFile -Append
+                Write-Host "Exception occurred in Main() method. Check error_log.txt"
+            }
         } else {
-            Write-Host "No static Main() method found in the compiled code."
+            "No static Main() method found in the compiled code." | Out-File -FilePath $logFile -Append
         }
     }
 } catch {
-    Write-Host "Compilation failed: $_"
+    $_ | Out-File -FilePath $logFile -Append
+    Write-Host "Compilation failed. Check error_log.txt"
 }
