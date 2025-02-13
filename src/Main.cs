@@ -1,4 +1,3 @@
-// This is Snek. Snek is an easter egg
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -32,7 +31,7 @@ public class GameForm : Form {
     int pendingDX, pendingDY;
     Point currentMousePosition;
     
-    // New visual effect variables
+    // Visual effect variables
     private float glowIntensity = 1.0f;
     private float rainbowPhase = 0f;
     private const float RAINBOW_SPEED = 0.05f;
@@ -74,7 +73,7 @@ public class GameForm : Form {
         this.KeyDown += GameForm_KeyDown;
     }
 
-    // New method to create glow effect
+    // Method to create a glow effect path
     private GraphicsPath CreateGlowPath(PointF center, float radius, float glowSize) {
         GraphicsPath path = new GraphicsPath();
         for (float size = radius; size <= radius + glowSize; size += glowSize / 4) {
@@ -83,7 +82,7 @@ public class GameForm : Form {
         return path;
     }
 
-    // New method to generate rainbow colors
+    // Generates a rainbow color based on the phase value
     private Color GetRainbowColor(float phase) {
         float frequency = 2.0f * (float)Math.PI;
         int r = (int)(Math.Sin(frequency * phase + 0) * 127 + 128);
@@ -92,7 +91,7 @@ public class GameForm : Form {
         return Color.FromArgb(r, g, b);
     }
 
-    // New method for drawing shiny eyes
+    // Draws a shiny eye with an inner gradient
     private void DrawShinyEye(Graphics g, PointF center, float eyeRadius, float pupilRadius) {
         RectangleF eyeRect = new RectangleF(
             center.X - eyeRadius, 
@@ -104,7 +103,7 @@ public class GameForm : Form {
         // White of the eye
         g.FillEllipse(Brushes.White, eyeRect);
         
-        // Add shine effect
+        // Shine effect
         using (PathGradientBrush shine = new PathGradientBrush(new PointF[] {
             new PointF(center.X - eyeRadius * 0.7f, center.Y - eyeRadius * 0.7f),
             new PointF(center.X + eyeRadius * 0.7f, center.Y - eyeRadius * 0.7f),
@@ -214,8 +213,8 @@ public class GameForm : Form {
         Point newPlayerHead = new Point(playerHead.X + playerDX, playerHead.Y + playerDY);
         if (IsOutOfBounds(newPlayerHead) || playerSnake.Skip(1).Contains(newPlayerHead) || enemySnake.Skip(1).Contains(newPlayerHead)) {
             timer.Stop();
-            //MessageBox.Show("Game Over! Your Score: " + playerScore);
-            //Application.Exit();
+            MessageBox.Show("Game Over! Your Score: " + playerScore);
+            Application.Exit();
             return;
         }
         playerSnake.Insert(0, newPlayerHead);
@@ -223,11 +222,12 @@ public class GameForm : Form {
         if (foodIndex != -1) {
             Food eaten = foods[foodIndex];
             if (eaten.IsSpecial) {
-                playerScore += 30;
-                playerBaseColor = eaten.FoodColor;
+                playerScore += 100;
+                // Add 10 segments to the player's snake
                 Point tail = playerSnake[playerSnake.Count - 1];
-                playerSnake.Add(tail);
-                playerSnake.Add(tail);
+                for (int i = 0; i < 30; i++) {
+                    playerSnake.Add(tail);
+                }
             } else {
                 playerScore += 10;
             }
@@ -239,7 +239,6 @@ public class GameForm : Form {
         }
 
         // --- Enemy Update ---
-        // Target the nearest food by Manhattan distance
         if (foods.Count == 0)
             GenerateFoods();
         Point enemyHead = enemySnake[0];
@@ -295,10 +294,12 @@ public class GameForm : Form {
             if (enemyFoodIndex != -1) {
                 Food eaten = foods[enemyFoodIndex];
                 if (eaten.IsSpecial) {
-                    enemyScore += 30;
+                    enemyScore += 100;
+                    // Add 10 segments to the enemy snake
                     Point tail = enemySnake[enemySnake.Count - 1];
-                    enemySnake.Add(tail);
-                    enemySnake.Add(tail);
+                    for (int i = 0; i < 10; i++) {
+                        enemySnake.Add(tail);
+                    }
                 } else {
                     enemyScore += 10;
                 }
@@ -328,9 +329,10 @@ public class GameForm : Form {
             } while (playerSnake.Contains(newFood.Position) ||
                      enemySnake.Contains(newFood.Position) ||
                      foods.Any(f => f.Position == newFood.Position));
-            newFood.IsSpecial = rand.NextDouble() < 0.2;
+            // Super food (special) spawns with a 7.5% chance
+            newFood.IsSpecial = rand.NextDouble() < 0.075;
             newFood.FoodColor = newFood.IsSpecial 
-                ? Color.FromArgb(rand.Next(256), rand.Next(256), rand.Next(256))
+                ? Color.Empty // Its color will oscillate at draw time
                 : Color.Red;
             foods.Add(newFood);
         }
@@ -362,7 +364,7 @@ public class GameForm : Form {
         float headRadius = cellSize * 0.8f;
         float tailRadius = cellSize * 0.4f;
         
-        // Create a rainbow effect for the player's snake
+        // Rainbow effect for the player's snake
         Color headColor = isPlayer ? GetRainbowColor(rainbowPhase) : baseColor;
         Color tailColor = isPlayer ? GetRainbowColor(rainbowPhase + 0.3f) : ControlPaint.Dark(baseColor);
 
@@ -373,7 +375,7 @@ public class GameForm : Form {
             float cx = snake[i].X * cellSize + cellSize / 2f;
             float cy = snake[i].Y * cellSize + cellSize / 2f;
             
-            // Add glow effect
+            // Add glow effect for the player
             if (isPlayer) {
                 using (GraphicsPath glowPath = CreateGlowPath(new PointF(cx, cy), radius, radius * 1.5f))
                 using (PathGradientBrush glowBrush = new PathGradientBrush(glowPath)) {
@@ -391,7 +393,7 @@ public class GameForm : Form {
 
             RectangleF nodeRect = new RectangleF(cx - radius, cy - radius, radius * 2, radius * 2);
             
-            // Add inner glow/shine
+            // Inner glow/shine effect
             using (PathGradientBrush innerGlow = new PathGradientBrush(new PointF[] {
                 new PointF(cx - radius, cy - radius),
                 new PointF(cx + radius, cy - radius),
@@ -408,19 +410,17 @@ public class GameForm : Form {
             using (Pen pen = new Pen(Color.FromArgb(100, Color.White), 2))
                 g.DrawEllipse(pen, nodeRect);
 
-            // Enhanced player head decorations
+            // Enhanced decorations for the player's head
             if (i == 0 && isPlayer) {
-                // Add shiny effect to eyes
                 float eyeRadius = radius * 0.3f;
                 float pupilRadius = eyeRadius * 0.5f;
                 PointF leftEyeCenter = new PointF(cx - radius * 0.4f, cy - radius * 0.4f);
                 PointF rightEyeCenter = new PointF(cx + radius * 0.4f, cy - radius * 0.4f);
                 
-                // Draw eyes with shine
                 DrawShinyEye(g, leftEyeCenter, eyeRadius, pupilRadius);
                 DrawShinyEye(g, rightEyeCenter, eyeRadius, pupilRadius);
 
-                // Enhanced hat with gradient
+                // Draw a stylish hat with a gradient
                 PointF hatLeft = new PointF(cx - radius * 0.6f, cy - radius);
                 PointF hatRight = new PointF(cx + radius * 0.6f, cy - radius);
                 PointF hatTop = new PointF(cx, cy - radius - radius * 1.5f);
@@ -471,7 +471,7 @@ public class GameForm : Form {
     }
 
     protected override void OnPaint(PaintEventArgs e) {
-        using (var bgBrush = new LinearGradientBrush(ClientRectangle, Color.LightGray, Color.DarkGray, 90F))
+        using (var bgBrush = new LinearGradientBrush(ClientRectangle, Color.FromArgb(0, 0, 0), Color.FromArgb(32, 32, 32), 90F))
             e.Graphics.FillRectangle(bgBrush, ClientRectangle);
         base.OnPaint(e);
         Graphics g = e.Graphics;
@@ -481,9 +481,19 @@ public class GameForm : Form {
         DrawSnake(g, enemySnake, Color.Blue, false);
 
         foreach (var food in foods) {
-            Rectangle foodRect = new Rectangle(food.Position.X * cellSize, food.Position.Y * cellSize, cellSize, cellSize);
-            using (SolidBrush brush = new SolidBrush(food.FoodColor))
-                g.FillEllipse(brush, foodRect);
+            if (food.IsSpecial) {
+                // Draw super food with oscillating color and 2x size
+                Color oscillatingColor = GetRainbowColor(rainbowPhase + 0.5f);
+                float cx = food.Position.X * cellSize + cellSize / 2f;
+                float cy = food.Position.Y * cellSize + cellSize / 2f;
+                Rectangle foodRect = new Rectangle((int)(cx - cellSize), (int)(cy - cellSize), cellSize * 2, cellSize * 2);
+                using (SolidBrush brush = new SolidBrush(oscillatingColor))
+                    g.FillEllipse(brush, foodRect);
+            } else {
+                Rectangle foodRect = new Rectangle(food.Position.X * cellSize, food.Position.Y * cellSize, cellSize, cellSize);
+                using (SolidBrush brush = new SolidBrush(food.FoodColor))
+                    g.FillEllipse(brush, foodRect);
+            }
         }
 
         string scoreText = string.Format("Player: {0}    Enemy: {1}", playerScore, enemyScore);
@@ -500,4 +510,3 @@ public static class Program {
         Application.Run(new GameForm());
     }
 }
-
