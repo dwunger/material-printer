@@ -15,9 +15,13 @@ public struct Move {
 }
 
 public class GameForm : Form {
-    Timer timer;
+    Timer logicTimer;
+    Timer renderTimer;
     List<Point> playerSnake;
     List<Point> enemySnake;
+    // Store the previous positions for interpolation.
+    List<PointF> prevPlayerSnake;
+    List<PointF> prevEnemySnake;
     List<Food> foods = new List<Food>();
     int cellSize = 10, cols = 40, rows = 40;
     int playerDX = 1, playerDY = 0;
@@ -30,11 +34,14 @@ public class GameForm : Form {
     bool keyboardOverride = false;
     int pendingDX, pendingDY;
     Point currentMousePosition;
-    
+
     // Visual effect variables
     private float glowIntensity = 1.0f;
     private float rainbowPhase = 0f;
     private const float RAINBOW_SPEED = 0.05f;
+
+    // Time tracking for interpolation
+    DateTime lastUpdateTime;
 
     private struct Food {
         public Point Position;
@@ -50,18 +57,28 @@ public class GameForm : Form {
 
         playerSnake = new List<Point> { new Point(cols / 2, rows / 2) };
         enemySnake = new List<Point> { new Point(cols / 4, rows / 4) };
+        // Initialize previous positions as the same as starting positions.
+        prevPlayerSnake = playerSnake.Select(p => new PointF(p.X, p.Y)).ToList();
+        prevEnemySnake = enemySnake.Select(p => new PointF(p.X, p.Y)).ToList();
         GenerateFoods();
 
         pendingDX = playerDX;
         pendingDY = playerDY;
 
-        timer = new Timer { Interval = 100 };
-        timer.Tick += (s, e) => UpdateGame();
+        // Logic timer (game ticks every 100ms)
+        logicTimer = new Timer { Interval = 100 };
+        logicTimer.Tick += (s, e) => UpdateGame();
+
+        // Render timer for smooth animation (~60 FPS)
+        renderTimer = new Timer { Interval = 16 };
+        renderTimer.Tick += (s, e) => Invalidate();
 
         this.MouseClick += (s, e) => {
             if (!gameStarted && e.Button == MouseButtons.Left) {
                 gameStarted = true;
-                timer.Start();
+                lastUpdateTime = DateTime.Now;
+                logicTimer.Start();
+                renderTimer.Start();
             }
         };
 
@@ -71,6 +88,11 @@ public class GameForm : Form {
         };
 
         this.KeyDown += GameForm_KeyDown;
+    }
+
+    // Helper for linear interpolation
+    private PointF Lerp(PointF a, PointF b, float t) {
+        return new PointF(a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t);
     }
 
     // Method to create a glow effect path
@@ -166,6 +188,10 @@ public class GameForm : Form {
     }
 
     void UpdateGame() {
+        // Save current positions for interpolation.
+        prevPlayerSnake = playerSnake.Select(p => new PointF(p.X, p.Y)).ToList();
+        prevEnemySnake = enemySnake.Select(p => new PointF(p.X, p.Y)).ToList();
+
         animationPhase += 0.2f;
         if (animationPhase > Math.PI * 2)
             animationPhase -= (float)(Math.PI * 2);
@@ -212,7 +238,8 @@ public class GameForm : Form {
         Point playerHead = playerSnake[0];
         Point newPlayerHead = new Point(playerHead.X + playerDX, playerHead.Y + playerDY);
         if (IsOutOfBounds(newPlayerHead) || playerSnake.Skip(1).Contains(newPlayerHead) || enemySnake.Skip(1).Contains(newPlayerHead)) {
-            timer.Stop();
+            logicTimer.Stop();
+            renderTimer.Stop();
             MessageBox.Show("Game Over! Your Score: " + playerScore);
             Application.Exit();
             return;
@@ -223,7 +250,7 @@ public class GameForm : Form {
             Food eaten = foods[foodIndex];
             if (eaten.IsSpecial) {
                 playerScore += 100;
-                // Add 10 segments to the player's snake
+                // Add extra segments to the player's snake
                 Point tail = playerSnake[playerSnake.Count - 1];
                 for (int i = 0; i < 30; i++) {
                     playerSnake.Add(tail);
@@ -295,7 +322,6 @@ public class GameForm : Form {
                 Food eaten = foods[enemyFoodIndex];
                 if (eaten.IsSpecial) {
                     enemyScore += 100;
-                    // Add 10 segments to the enemy snake
                     Point tail = enemySnake[enemySnake.Count - 1];
                     for (int i = 0; i < 10; i++) {
                         enemySnake.Add(tail);
@@ -311,7 +337,8 @@ public class GameForm : Form {
             }
         }
 
-        Invalidate();
+        // Mark the time after the logic update.
+        lastUpdateTime = DateTime.Now;
     }
 
     bool IsOutOfBounds(Point p) {
@@ -329,11 +356,8 @@ public class GameForm : Form {
             } while (playerSnake.Contains(newFood.Position) ||
                      enemySnake.Contains(newFood.Position) ||
                      foods.Any(f => f.Position == newFood.Position));
-            // Super food (special) spawns with a 7.5% chance
             newFood.IsSpecial = rand.NextDouble() < 0.075;
-            newFood.FoodColor = newFood.IsSpecial 
-                ? Color.Empty // Its color will oscillate at draw time
-                : Color.Red;
+            newFood.FoodColor = newFood.IsSpecial ? Color.Empty : Color.Red;
             foods.Add(newFood);
         }
     }
@@ -357,14 +381,22 @@ public class GameForm : Form {
         return Color.FromArgb(r, g, b);
     }
 
-    void DrawSnake(Graphics g, List<Point> snake, Color baseColor, bool isPlayer) {
+    // Draws the snake using interpolated positions.
+    void DrawSnakeInterpolated(Graphics g, List<PointF> prevSnake, List<Point> snake, Color baseColor, bool isPlayer, float alpha) {
         if (snake == null || snake.Count == 0)
             return;
+
+        // Build a list of interpolated positions.
+        List<PointF> interp = new List<PointF>();
+        for (int i = 0; i < snake.Count; i++) {
+            PointF from = i < prevSnake.Count ? prevSnake[i] : new PointF(snake[i].X, snake[i].Y);
+            PointF to = new PointF(snake[i].X, snake[i].Y);
+            interp.Add(Lerp(from, to, alpha));
+        }
 
         float headRadius = cellSize * 0.8f;
         float tailRadius = cellSize * 0.4f;
         
-        // Rainbow effect for the player's snake
         Color headColor = isPlayer ? GetRainbowColor(rainbowPhase) : baseColor;
         Color tailColor = isPlayer ? GetRainbowColor(rainbowPhase + 0.3f) : ControlPaint.Dark(baseColor);
 
@@ -372,19 +404,14 @@ public class GameForm : Form {
             float t = snake.Count > 1 ? (float)i / (snake.Count - 1) : 0f;
             float radius = headRadius * (1 - t) + tailRadius * t;
             Color nodeColor = InterpolateColor(headColor, tailColor, t);
-            float cx = snake[i].X * cellSize + cellSize / 2f;
-            float cy = snake[i].Y * cellSize + cellSize / 2f;
+            float cx = interp[i].X * cellSize + cellSize / 2f;
+            float cy = interp[i].Y * cellSize + cellSize / 2f;
             
-            // Add glow effect for the player
+            // Add glow effect for the player's snake.
             if (isPlayer) {
                 using (GraphicsPath glowPath = CreateGlowPath(new PointF(cx, cy), radius, radius * 1.5f))
                 using (PathGradientBrush glowBrush = new PathGradientBrush(glowPath)) {
-                    Color glowColor = Color.FromArgb(
-                        (int)(100 * glowIntensity),
-                        nodeColor.R,
-                        nodeColor.G,
-                        nodeColor.B
-                    );
+                    Color glowColor = Color.FromArgb((int)(100 * glowIntensity), nodeColor.R, nodeColor.G, nodeColor.B);
                     glowBrush.CenterColor = glowColor;
                     glowBrush.SurroundColors = new Color[] { Color.FromArgb(0, nodeColor) };
                     g.FillPath(glowBrush, glowPath);
@@ -392,8 +419,6 @@ public class GameForm : Form {
             }
 
             RectangleF nodeRect = new RectangleF(cx - radius, cy - radius, radius * 2, radius * 2);
-            
-            // Inner glow/shine effect
             using (PathGradientBrush innerGlow = new PathGradientBrush(new PointF[] {
                 new PointF(cx - radius, cy - radius),
                 new PointF(cx + radius, cy - radius),
@@ -404,28 +429,25 @@ public class GameForm : Form {
                 innerGlow.SurroundColors = new Color[] { Color.FromArgb(0, 255, 255, 255) };
                 g.FillEllipse(innerGlow, nodeRect);
             }
-
             using (SolidBrush brush = new SolidBrush(nodeColor))
                 g.FillEllipse(brush, nodeRect);
             using (Pen pen = new Pen(Color.FromArgb(100, Color.White), 2))
                 g.DrawEllipse(pen, nodeRect);
 
-            // Enhanced decorations for the player's head
+            // Enhanced decorations for the player's head.
             if (i == 0 && isPlayer) {
                 float eyeRadius = radius * 0.3f;
                 float pupilRadius = eyeRadius * 0.5f;
                 PointF leftEyeCenter = new PointF(cx - radius * 0.4f, cy - radius * 0.4f);
                 PointF rightEyeCenter = new PointF(cx + radius * 0.4f, cy - radius * 0.4f);
-                
                 DrawShinyEye(g, leftEyeCenter, eyeRadius, pupilRadius);
                 DrawShinyEye(g, rightEyeCenter, eyeRadius, pupilRadius);
 
-                // Draw a stylish hat with a gradient
+                // Draw a stylish hat with a gradient.
                 PointF hatLeft = new PointF(cx - radius * 0.6f, cy - radius);
                 PointF hatRight = new PointF(cx + radius * 0.6f, cy - radius);
                 PointF hatTop = new PointF(cx, cy - radius - radius * 1.5f);
                 PointF[] hatPoints = { hatLeft, hatTop, hatRight };
-                
                 using (LinearGradientBrush hatBrush = new LinearGradientBrush(
                     new Point((int)hatLeft.X, (int)hatLeft.Y),
                     new Point((int)hatRight.X, (int)hatRight.Y),
@@ -437,24 +459,23 @@ public class GameForm : Form {
                 }
             }
 
-            // Draw smooth connecting capsules between segments
+            // Draw smooth connecting capsules between segments.
             if (i < snake.Count - 1) {
                 float tNext = (float)(i + 1) / (snake.Count - 1);
                 float nextRadius = headRadius * (1 - tNext) + tailRadius * tNext;
                 Color nextColor = InterpolateColor(headColor, tailColor, tNext);
                 PointF p1 = new PointF(cx, cy);
-                PointF p2 = new PointF(snake[i + 1].X * cellSize + cellSize / 2f,
-                                       snake[i + 1].Y * cellSize + cellSize / 2f);
-                float dx = p2.X - p1.X;
-                float dy = p2.Y - p1.Y;
+                PointF nextInterp = new PointF(interp[i + 1].X * cellSize + cellSize / 2f,
+                                               interp[i + 1].Y * cellSize + cellSize / 2f);
+                float dx = nextInterp.X - p1.X;
+                float dy = nextInterp.Y - p1.Y;
                 float angle = (float)Math.Atan2(dy, dx);
                 PointF offset1 = new PointF(radius * (float)Math.Sin(angle), -radius * (float)Math.Cos(angle));
                 PointF offset2 = new PointF(nextRadius * (float)Math.Sin(angle), -nextRadius * (float)Math.Cos(angle));
-
                 using (GraphicsPath path = new GraphicsPath()) {
                     PointF p1a = new PointF(p1.X - offset1.X, p1.Y - offset1.Y);
-                    PointF p2a = new PointF(p2.X - offset2.X, p2.Y - offset2.Y);
-                    PointF p2b = new PointF(p2.X + offset2.X, p2.Y + offset2.Y);
+                    PointF p2a = new PointF(nextInterp.X - offset2.X, nextInterp.Y - offset2.Y);
+                    PointF p2b = new PointF(nextInterp.X + offset2.X, nextInterp.Y + offset2.Y);
                     PointF p1b = new PointF(p1.X + offset1.X, p1.Y + offset1.Y);
                     PointF[] capsulePts = new PointF[] { p1a, p2a, p2b, p1b };
                     path.AddPolygon(capsulePts);
@@ -462,7 +483,7 @@ public class GameForm : Form {
                         using (SolidBrush solidBrush = new SolidBrush(nodeColor))
                             g.FillPath(solidBrush, path);
                     } else {
-                        using (LinearGradientBrush lgBrush = new LinearGradientBrush(p1, p2, nodeColor, nextColor))
+                        using (LinearGradientBrush lgBrush = new LinearGradientBrush(p1, nextInterp, nodeColor, nextColor))
                             g.FillPath(lgBrush, path);
                     }
                 }
@@ -477,12 +498,15 @@ public class GameForm : Form {
         Graphics g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
-        DrawSnake(g, playerSnake, playerBaseColor, true);
-        DrawSnake(g, enemySnake, Color.Blue, false);
+        // Compute an interpolation factor between 0 and 1.
+        float alpha = (float)(DateTime.Now - lastUpdateTime).TotalMilliseconds / logicTimer.Interval;
+        if (alpha > 1f) alpha = 1f;
+
+        DrawSnakeInterpolated(g, prevPlayerSnake, playerSnake, playerBaseColor, true, alpha);
+        DrawSnakeInterpolated(g, prevEnemySnake, enemySnake, Color.Blue, false, alpha);
 
         foreach (var food in foods) {
             if (food.IsSpecial) {
-                // Draw super food with oscillating color and 2x size
                 Color oscillatingColor = GetRainbowColor(rainbowPhase + 0.5f);
                 float cx = food.Position.X * cellSize + cellSize / 2f;
                 float cy = food.Position.Y * cellSize + cellSize / 2f;
