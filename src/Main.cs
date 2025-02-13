@@ -27,21 +27,32 @@ public class GameForm : Form {
     Random rand = new Random();
     float animationPhase = 0f; // drives the animated shading
 
-    // Fields to handle mouse start and movement.
+    // Input handling: mouse and keyboard.
     bool gameStarted = false;
+    // When no key has been pressed, mouse input controls the snake.
+    // Once a key is pressed, keyboard input overrides and mouse input is ignored.
+    bool keyboardOverride = false;
+    int pendingDX, pendingDY;
     Point currentMousePosition;
 
     public GameForm() {
         this.ClientSize = new Size(cols * cellSize, rows * cellSize + 40);
         this.DoubleBuffered = true;
-        this.Text = "Snek - Mouse click to start";
+        this.Text = "Snek - Mouse or Arrow/WASD (keys override mouse)";
+        this.KeyPreview = true;
 
+        // Initialize snakes.
         playerSnake = new List<Point> { new Point(cols / 2, rows / 2) };
         enemySnake = new List<Point> { new Point(cols / 4, rows / 4) };
         GenerateFood();
 
+        // Initialize pending direction to match initial movement.
+        pendingDX = playerDX;
+        pendingDY = playerDY;
+
         timer = new Timer { Interval = 100 };
         timer.Tick += (s, e) => UpdateGame();
+
         // Start the game on left mouse click.
         this.MouseClick += (s, e) => {
             if (!gameStarted && e.Button == MouseButtons.Left) {
@@ -50,9 +61,47 @@ public class GameForm : Form {
             }
         };
 
+        // Capture mouse movements.
         this.MouseMove += (s, e) => {
-            currentMousePosition = e.Location;
+            if (!keyboardOverride) // Only update mouse direction if keyboard hasn't overridden.
+                currentMousePosition = e.Location;
         };
+
+        // Handle keyboard input for direction control.
+        this.KeyDown += GameForm_KeyDown;
+    }
+
+    private void GameForm_KeyDown(object sender, KeyEventArgs e) {
+        // Once any key is pressed, keyboard input takes precedence.
+        keyboardOverride = true;
+        int newDX = pendingDX, newDY = pendingDY;
+        switch (e.KeyCode) {
+            case Keys.Up:
+            case Keys.W:
+                newDX = 0; newDY = -1;
+                break;
+            case Keys.Down:
+            case Keys.S:
+                newDX = 0; newDY = 1;
+                break;
+            case Keys.Left:
+            case Keys.A:
+                newDX = -1; newDY = 0;
+                break;
+            case Keys.Right:
+            case Keys.D:
+                newDX = 1; newDY = 0;
+                break;
+        }
+        // Prevent reversing into itself.
+        if (playerSnake.Count > 1) {
+            int currentDX = playerSnake[0].X - playerSnake[1].X;
+            int currentDY = playerSnake[0].Y - playerSnake[1].Y;
+            if (newDX == -currentDX && newDY == -currentDY)
+                return;
+        }
+        pendingDX = newDX;
+        pendingDY = newDY;
     }
 
     void UpdateGame() {
@@ -61,33 +110,41 @@ public class GameForm : Form {
         if (animationPhase > Math.PI * 2)
             animationPhase -= (float)(Math.PI * 2);
 
-        // Compute candidate direction for the player's snake based on mouse.
-        int mouseCellX = currentMousePosition.X / cellSize;
-        int mouseCellY = currentMousePosition.Y / cellSize;
-        int diffX = mouseCellX - playerSnake[0].X;
-        int diffY = mouseCellY - playerSnake[0].Y;
-        
-        // Compute the angle from the head to the mouse.
-        double inputAngle = Math.Atan2(diffY, diffX);
-        double currentAngle = Math.Atan2(playerDY, playerDX);
-        // Compute smallest angle difference.
-        double delta = Math.Abs((inputAngle - currentAngle + Math.PI) % (2 * Math.PI) - Math.PI);
-        
-        int candidateDX = playerDX;
-        int candidateDY = playerDY;
-        // If nearly 180 degrees (reverse) then reject input.
-        if (Math.Abs(delta - Math.PI) < 0.1) {
-            candidateDX = playerDX;
-            candidateDY = playerDY;
-        } else {
-            // Choose new direction based on dominant axis.
-            if (Math.Abs(diffX) > Math.Abs(diffY)) {
-                candidateDX = diffX > 0 ? 1 : -1;
-                candidateDY = 0;
-            } else if (diffY != 0) {
-                candidateDY = diffY > 0 ? 1 : -1;
-                candidateDX = 0;
+        int candidateDX, candidateDY;
+        // Choose input based on whether keyboard has overridden.
+        if (!keyboardOverride) {
+            // Use mouse input.
+            int mouseCellX = currentMousePosition.X / cellSize;
+            int mouseCellY = currentMousePosition.Y / cellSize;
+            int diffX = mouseCellX - playerSnake[0].X;
+            int diffY = mouseCellY - playerSnake[0].Y;
+
+            // Compute angle from snake head to mouse.
+            double inputAngle = Math.Atan2(diffY, diffX);
+            double currentAngle = Math.Atan2(playerDY, playerDX);
+            double delta = Math.Abs((inputAngle - currentAngle + Math.PI) % (2 * Math.PI) - Math.PI);
+
+            // If nearly reversing (180°), ignore mouse input.
+            if (Math.Abs(delta - Math.PI) < 0.1) {
+                candidateDX = playerDX;
+                candidateDY = playerDY;
+            } else {
+                // Determine new direction based on dominant axis.
+                if (Math.Abs(diffX) > Math.Abs(diffY)) {
+                    candidateDX = diffX > 0 ? 1 : -1;
+                    candidateDY = 0;
+                } else if (diffY != 0) {
+                    candidateDY = diffY > 0 ? 1 : -1;
+                    candidateDX = 0;
+                } else {
+                    candidateDX = playerDX;
+                    candidateDY = playerDY;
+                }
             }
+        } else {
+            // Use keyboard input.
+            candidateDX = pendingDX;
+            candidateDY = pendingDY;
         }
 
         // Prevent player's snake from reversing into itself.
@@ -282,15 +339,12 @@ public class GameForm : Form {
                 // Draw googley eyes.
                 float eyeRadius = radius * 0.3f;
                 float pupilRadius = eyeRadius * 0.5f;
-                // Position the eyes slightly above center.
                 PointF leftEyeCenter = new PointF(cx - radius * 0.4f, cy - radius * 0.4f);
                 PointF rightEyeCenter = new PointF(cx + radius * 0.4f, cy - radius * 0.4f);
                 RectangleF leftEyeRect = new RectangleF(leftEyeCenter.X - eyeRadius, leftEyeCenter.Y - eyeRadius, eyeRadius * 2, eyeRadius * 2);
                 RectangleF rightEyeRect = new RectangleF(rightEyeCenter.X - eyeRadius, rightEyeCenter.Y - eyeRadius, eyeRadius * 2, eyeRadius * 2);
-                // White part of the eyes.
                 g.FillEllipse(Brushes.White, leftEyeRect);
                 g.FillEllipse(Brushes.White, rightEyeRect);
-                // Pupils.
                 RectangleF leftPupilRect = new RectangleF(leftEyeCenter.X - pupilRadius, leftEyeCenter.Y - pupilRadius, pupilRadius * 2, pupilRadius * 2);
                 RectangleF rightPupilRect = new RectangleF(rightEyeCenter.X - pupilRadius, rightEyeCenter.Y - pupilRadius, pupilRadius * 2, pupilRadius * 2);
                 g.FillEllipse(Brushes.Black, leftPupilRect);
@@ -305,7 +359,7 @@ public class GameForm : Form {
                 g.DrawPolygon(Pens.Black, hatPoints);
             }
 
-            // For a smooth connection, fill a capsule between this node and the next.
+            // Draw smooth connecting capsules between segments.
             if (i < snake.Count - 1) {
                 float tNext = (float)(i + 1) / (snake.Count - 1);
                 float nextRadius = headRadius * (1 - tNext) + tailRadius * tNext;
@@ -313,13 +367,12 @@ public class GameForm : Form {
                 PointF p1 = new PointF(cx, cy);
                 PointF p2 = new PointF(snake[i + 1].X * cellSize + cellSize / 2f,
                                        snake[i + 1].Y * cellSize + cellSize / 2f);
-                // Calculate the perpendicular offset based on each circle's radius.
                 float dx = p2.X - p1.X;
                 float dy = p2.Y - p1.Y;
                 float angle = (float)Math.Atan2(dy, dx);
                 PointF offset1 = new PointF(radius * (float)Math.Sin(angle), -radius * (float)Math.Cos(angle));
                 PointF offset2 = new PointF(nextRadius * (float)Math.Sin(angle), -nextRadius * (float)Math.Cos(angle));
-                
+
                 using (GraphicsPath path = new GraphicsPath()) {
                     PointF[] capsulePts = new PointF[] {
                         new PointF(p1.X + offset1.X, p1.Y + offset1.Y),
@@ -328,7 +381,6 @@ public class GameForm : Form {
                         new PointF(p1.X - offset1.X, p1.Y - offset1.Y)
                     };
                     path.AddPolygon(capsulePts);
-                    // Use a linear gradient to blend between node colors.
                     using (LinearGradientBrush lgBrush = new LinearGradientBrush(p1, p2, nodeColor, nextColor)) {
                         g.FillPath(lgBrush, path);
                     }
@@ -345,3 +397,4 @@ public static class Program {
         Application.Run(new GameForm());
     }
 }
+
