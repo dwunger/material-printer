@@ -1,5 +1,4 @@
-// This is Snek. I am an easter egg.
-
+// This is Snek. Snek is an easter egg
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -246,70 +245,97 @@ public class GameForm : Form {
             g.DrawString("Enemy Pos: " + enemySnake[0], this.Font, Brushes.Blue, 5, rows * cellSize + 20);
     }
 
-// Helper: Linear interpolation between two colors.
-Color InterpolateColor(Color start, Color end, float t) {
-    int r = (int)(start.R + (end.R - start.R) * t);
-    int g = (int)(start.G + (end.G - start.G) * t);
-    int b = (int)(start.B + (end.B - start.B) * t);
-    return Color.FromArgb(r, g, b);
-}
+    // Helper: Linear interpolation between two colors.
+    Color InterpolateColor(Color start, Color end, float t) {
+        int r = (int)(start.R + (end.R - start.R) * t);
+        int g = (int)(start.G + (end.G - start.G) * t);
+        int b = (int)(start.B + (end.B - start.B) * t);
+        return Color.FromArgb(r, g, b);
+    }
 
-void DrawSnake(Graphics g, List<Point> snake, Color baseColor) {
-    if (snake == null || snake.Count == 0)
-        return;
+    void DrawSnake(Graphics g, List<Point> snake, Color baseColor) {
+        if (snake == null || snake.Count == 0)
+            return;
 
-    // Define the head and tail properties.
-    float headRadius = cellSize * 0.8f;
-    float tailRadius = cellSize * 0.4f;
-    // Use the base color at the head and a darker version at the tail.
-    Color headColor = baseColor;
-    Color tailColor = ControlPaint.Dark(baseColor);
+        // Define the head and tail properties.
+        float headRadius = cellSize * 0.8f;
+        float tailRadius = cellSize * 0.4f;
+        // Use the base color at the head and a darker version at the tail.
+        Color headColor = baseColor;
+        Color tailColor = ControlPaint.Dark(baseColor);
 
-    // Loop through each segment, drawing nodes and smooth connecting capsules.
-    for (int i = 0; i < snake.Count; i++) {
-        float t = snake.Count > 1 ? (float)i / (snake.Count - 1) : 0f;
-        float radius = headRadius * (1 - t) + tailRadius * t;
-        Color nodeColor = InterpolateColor(headColor, tailColor, t);
-        float cx = snake[i].X * cellSize + cellSize / 2f;
-        float cy = snake[i].Y * cellSize + cellSize / 2f;
-        RectangleF nodeRect = new RectangleF(cx - radius, cy - radius, radius * 2, radius * 2);
-        using (SolidBrush brush = new SolidBrush(nodeColor))
-            g.FillEllipse(brush, nodeRect);
-        using (Pen pen = new Pen(Color.Black, 1))
-            g.DrawEllipse(pen, nodeRect);
+        // Loop through each segment, drawing nodes and smooth connecting capsules.
+        for (int i = 0; i < snake.Count; i++) {
+            float t = snake.Count > 1 ? (float)i / (snake.Count - 1) : 0f;
+            float radius = headRadius * (1 - t) + tailRadius * t;
+            Color nodeColor = InterpolateColor(headColor, tailColor, t);
+            float cx = snake[i].X * cellSize + cellSize / 2f;
+            float cy = snake[i].Y * cellSize + cellSize / 2f;
+            RectangleF nodeRect = new RectangleF(cx - radius, cy - radius, radius * 2, radius * 2);
+            using (SolidBrush brush = new SolidBrush(nodeColor))
+                g.FillEllipse(brush, nodeRect);
+            using (Pen pen = new Pen(Color.Black, 1))
+                g.DrawEllipse(pen, nodeRect);
 
-        // For a smooth connection, fill a capsule between this node and the next.
-        if (i < snake.Count - 1) {
-            float tNext = (float)(i + 1) / (snake.Count - 1);
-            float nextRadius = headRadius * (1 - tNext) + tailRadius * tNext;
-            Color nextColor = InterpolateColor(headColor, tailColor, tNext);
-            PointF p1 = new PointF(cx, cy);
-            PointF p2 = new PointF(snake[i + 1].X * cellSize + cellSize / 2f,
-                                   snake[i + 1].Y * cellSize + cellSize / 2f);
-            // Calculate the perpendicular offset based on each circle's radius.
-            float dx = p2.X - p1.X;
-            float dy = p2.Y - p1.Y;
-            float angle = (float)Math.Atan2(dy, dx);
-            PointF offset1 = new PointF(radius * (float)Math.Sin(angle), -radius * (float)Math.Cos(angle));
-            PointF offset2 = new PointF(nextRadius * (float)Math.Sin(angle), -nextRadius * (float)Math.Cos(angle));
-            
-            using (GraphicsPath path = new GraphicsPath()) {
-                PointF[] capsulePts = new PointF[] {
-                    new PointF(p1.X + offset1.X, p1.Y + offset1.Y),
-                    new PointF(p2.X + offset2.X, p2.Y + offset2.Y),
-                    new PointF(p2.X - offset2.X, p2.Y - offset2.Y),
-                    new PointF(p1.X - offset1.X, p1.Y - offset1.Y)
-                };
-                path.AddPolygon(capsulePts);
-                // Use a linear gradient to blend between node colors.
-                using (LinearGradientBrush lgBrush = new LinearGradientBrush(p1, p2, nodeColor, nextColor)) {
-                    g.FillPath(lgBrush, path);
+            // If this is the player's snake head, add googley eyes and a party hat.
+            if (i == 0 && baseColor == Color.Green) {
+                // Draw googley eyes.
+                float eyeRadius = radius * 0.3f;
+                float pupilRadius = eyeRadius * 0.5f;
+                // Position the eyes slightly above center.
+                PointF leftEyeCenter = new PointF(cx - radius * 0.4f, cy - radius * 0.4f);
+                PointF rightEyeCenter = new PointF(cx + radius * 0.4f, cy - radius * 0.4f);
+                RectangleF leftEyeRect = new RectangleF(leftEyeCenter.X - eyeRadius, leftEyeCenter.Y - eyeRadius, eyeRadius * 2, eyeRadius * 2);
+                RectangleF rightEyeRect = new RectangleF(rightEyeCenter.X - eyeRadius, rightEyeCenter.Y - eyeRadius, eyeRadius * 2, eyeRadius * 2);
+                // White part of the eyes.
+                g.FillEllipse(Brushes.White, leftEyeRect);
+                g.FillEllipse(Brushes.White, rightEyeRect);
+                // Pupils.
+                RectangleF leftPupilRect = new RectangleF(leftEyeCenter.X - pupilRadius, leftEyeCenter.Y - pupilRadius, pupilRadius * 2, pupilRadius * 2);
+                RectangleF rightPupilRect = new RectangleF(rightEyeCenter.X - pupilRadius, rightEyeCenter.Y - pupilRadius, pupilRadius * 2, pupilRadius * 2);
+                g.FillEllipse(Brushes.Black, leftPupilRect);
+                g.FillEllipse(Brushes.Black, rightPupilRect);
+
+                // Draw party hat.
+                PointF hatLeft = new PointF(cx - radius * 0.6f, cy - radius);
+                PointF hatRight = new PointF(cx + radius * 0.6f, cy - radius);
+                PointF hatTop = new PointF(cx, cy - radius - radius * 1.5f);
+                PointF[] hatPoints = { hatLeft, hatTop, hatRight };
+                g.FillPolygon(Brushes.Magenta, hatPoints);
+                g.DrawPolygon(Pens.Black, hatPoints);
+            }
+
+            // For a smooth connection, fill a capsule between this node and the next.
+            if (i < snake.Count - 1) {
+                float tNext = (float)(i + 1) / (snake.Count - 1);
+                float nextRadius = headRadius * (1 - tNext) + tailRadius * tNext;
+                Color nextColor = InterpolateColor(headColor, tailColor, tNext);
+                PointF p1 = new PointF(cx, cy);
+                PointF p2 = new PointF(snake[i + 1].X * cellSize + cellSize / 2f,
+                                       snake[i + 1].Y * cellSize + cellSize / 2f);
+                // Calculate the perpendicular offset based on each circle's radius.
+                float dx = p2.X - p1.X;
+                float dy = p2.Y - p1.Y;
+                float angle = (float)Math.Atan2(dy, dx);
+                PointF offset1 = new PointF(radius * (float)Math.Sin(angle), -radius * (float)Math.Cos(angle));
+                PointF offset2 = new PointF(nextRadius * (float)Math.Sin(angle), -nextRadius * (float)Math.Cos(angle));
+                
+                using (GraphicsPath path = new GraphicsPath()) {
+                    PointF[] capsulePts = new PointF[] {
+                        new PointF(p1.X + offset1.X, p1.Y + offset1.Y),
+                        new PointF(p2.X + offset2.X, p2.Y + offset2.Y),
+                        new PointF(p2.X - offset2.X, p2.Y - offset2.Y),
+                        new PointF(p1.X - offset1.X, p1.Y - offset1.Y)
+                    };
+                    path.AddPolygon(capsulePts);
+                    // Use a linear gradient to blend between node colors.
+                    using (LinearGradientBrush lgBrush = new LinearGradientBrush(p1, p2, nodeColor, nextColor)) {
+                        g.FillPath(lgBrush, path);
+                    }
                 }
             }
         }
     }
-}
-
 }
 
 public static class Program {
