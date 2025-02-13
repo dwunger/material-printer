@@ -22,6 +22,7 @@ public class GameForm : Form {
     // Store the previous positions for interpolation.
     List<PointF> prevPlayerSnake;
     List<PointF> prevEnemySnake;
+    
     List<Food> foods = new List<Food>();
     int cellSize = 10, cols = 40, rows = 40;
     int playerDX = 1, playerDY = 0;
@@ -43,9 +44,13 @@ public class GameForm : Form {
     // Time tracking for interpolation
     DateTime lastUpdateTime;
 
+    // New fields for magnet effect (counts down ticks)
+    int playerMagnetTicks = 0, enemyMagnetTicks = 0;
+
     private struct Food {
         public Point Position;
         public bool IsSpecial;
+        public bool IsMagnetic;  // NEW: magnetic food flag
         public Color FoodColor;
     }
 
@@ -245,10 +250,19 @@ public class GameForm : Form {
             return;
         }
         playerSnake.Insert(0, newPlayerHead);
-        int foodIndex = foods.FindIndex(f => newPlayerHead.Equals(f.Position));
+        int foodIndex = foods.FindIndex(f => Math.Max(Math.Abs(newPlayerHead.X - f.Position.X), Math.Abs(newPlayerHead.Y - f.Position.Y)) <= 1);
         if (foodIndex != -1) {
             Food eaten = foods[foodIndex];
-            if (eaten.IsSpecial) {
+            if (eaten.IsMagnetic) {
+                // Magnetic food: add 3 segments and start magnet effect (100 ticks)
+                playerScore += 20;
+                Point tail = playerSnake[playerSnake.Count - 1];
+                for (int i = 0; i < 3; i++) {
+                    playerSnake.Add(tail);
+                }
+                playerMagnetTicks = 100;
+            }
+            else if (eaten.IsSpecial) {
                 playerScore += 100;
                 // Add extra segments to the player's snake
                 Point tail = playerSnake[playerSnake.Count - 1];
@@ -317,10 +331,17 @@ public class GameForm : Form {
             RespawnEnemy();
         } else {
             enemySnake.Insert(0, newEnemyHead);
-            int enemyFoodIndex = foods.FindIndex(f => newEnemyHead.Equals(f.Position));
-            if (enemyFoodIndex != -1) {
+            int enemyFoodIndex = foods.FindIndex(f => Math.Max(Math.Abs(newEnemyHead.X - f.Position.X), Math.Abs(newEnemyHead.Y - f.Position.Y)) <= 1);            if (enemyFoodIndex != -1) {
                 Food eaten = foods[enemyFoodIndex];
-                if (eaten.IsSpecial) {
+                if (eaten.IsMagnetic) {
+                    enemyScore += 20;
+                    Point tail = enemySnake[enemySnake.Count - 1];
+                    for (int i = 0; i < 3; i++) {
+                        enemySnake.Add(tail);
+                    }
+                    enemyMagnetTicks = 100;
+                }
+                else if (eaten.IsSpecial) {
                     enemyScore += 100;
                     Point tail = enemySnake[enemySnake.Count - 1];
                     for (int i = 0; i < 10; i++) {
@@ -336,6 +357,36 @@ public class GameForm : Form {
                 enemySnake.RemoveAt(enemySnake.Count - 1);
             }
         }
+
+        // --- Magnetic Food Attraction ---
+        // If either snake has an active magnet effect, move each food 1 unit toward that snake’s head.
+        if (playerMagnetTicks > 0 || enemyMagnetTicks > 0) {
+            for (int i = 0; i < foods.Count; i++) {
+                bool playerActive = playerMagnetTicks > 0;
+                bool enemyActive = enemyMagnetTicks > 0;
+                Point target;
+                if (playerActive && enemyActive) {
+                    int distPlayer = Math.Abs(foods[i].Position.X - playerSnake[0].X) + Math.Abs(foods[i].Position.Y - playerSnake[0].Y);
+                    int distEnemy = Math.Abs(foods[i].Position.X - enemySnake[0].X) + Math.Abs(foods[i].Position.Y - enemySnake[0].Y);
+                    target = (distPlayer <= distEnemy) ? playerSnake[0] : enemySnake[0];
+                } else if (playerActive) {
+                    target = playerSnake[0];
+                } else { // enemyActive
+                    target = enemySnake[0];
+                }
+                int dx = target.X - foods[i].Position.X;
+                int dy = target.Y - foods[i].Position.Y;
+                int moveX = dx == 0 ? 0 : (dx > 0 ? 1 : -1);
+                int moveY = dy == 0 ? 0 : (dy > 0 ? 1 : -1);
+                Food f = foods[i];
+                f.Position = new Point(f.Position.X + moveX, f.Position.Y + moveY);
+                foods[i] = f;
+            }
+        }
+
+        // Decrement magnet timers
+        if (playerMagnetTicks > 0) playerMagnetTicks--;
+        if (enemyMagnetTicks > 0) enemyMagnetTicks--;
 
         // Mark the time after the logic update.
         lastUpdateTime = DateTime.Now;
@@ -356,8 +407,24 @@ public class GameForm : Form {
             } while (playerSnake.Contains(newFood.Position) ||
                      enemySnake.Contains(newFood.Position) ||
                      foods.Any(f => f.Position == newFood.Position));
-            newFood.IsSpecial = rand.NextDouble() < 0.075;
-            newFood.FoodColor = newFood.IsSpecial ? Color.Empty : Color.Red;
+            // Determine food type:
+            double magneticChance = 0.565;
+            double specialChance = 0.075;
+            if (rand.NextDouble() < magneticChance) {
+                newFood.IsMagnetic = true;
+                newFood.IsSpecial = false;
+                newFood.FoodColor = Color.Red; // initial color (will oscillate)
+            }
+            else if (rand.NextDouble() < specialChance) {
+                newFood.IsSpecial = true;
+                newFood.IsMagnetic = false;
+                newFood.FoodColor = Color.Empty;
+            }
+            else {
+                newFood.IsSpecial = false;
+                newFood.IsMagnetic = false;
+                newFood.FoodColor = Color.Red;
+            }
             foods.Add(newFood);
         }
     }
@@ -506,14 +573,26 @@ public class GameForm : Form {
         DrawSnakeInterpolated(g, prevEnemySnake, enemySnake, Color.Blue, false, alpha);
 
         foreach (var food in foods) {
-            if (food.IsSpecial) {
+            if (food.IsMagnetic) {
+                // Draw magnetic food (1.5x size, oscillating between red and white)
+                float oscillation = (float)(Math.Sin(animationPhase * 2) * 0.5 + 0.5);
+                Color magneticColor = InterpolateColor(Color.Red, Color.White, oscillation);
+                float cx = food.Position.X * cellSize + cellSize / 2f;
+                float cy = food.Position.Y * cellSize + cellSize / 2f;
+                float size = cellSize * 1.5f;
+                RectangleF foodRect = new RectangleF(cx - size / 2, cy - size / 2, size, size);
+                using (SolidBrush brush = new SolidBrush(magneticColor))
+                    g.FillEllipse(brush, foodRect);
+            }
+            else if (food.IsSpecial) {
                 Color oscillatingColor = GetRainbowColor(rainbowPhase + 0.5f);
                 float cx = food.Position.X * cellSize + cellSize / 2f;
                 float cy = food.Position.Y * cellSize + cellSize / 2f;
                 Rectangle foodRect = new Rectangle((int)(cx - cellSize), (int)(cy - cellSize), cellSize * 2, cellSize * 2);
                 using (SolidBrush brush = new SolidBrush(oscillatingColor))
                     g.FillEllipse(brush, foodRect);
-            } else {
+            }
+            else {
                 Rectangle foodRect = new Rectangle(food.Position.X * cellSize, food.Position.Y * cellSize, cellSize, cellSize);
                 using (SolidBrush brush = new SolidBrush(food.FoodColor))
                     g.FillEllipse(brush, foodRect);
