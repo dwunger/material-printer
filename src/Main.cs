@@ -408,7 +408,7 @@ public class GameForm : Form {
                      enemySnake.Contains(newFood.Position) ||
                      foods.Any(f => f.Position == newFood.Position));
             // Determine food type:
-            double magneticChance = 0.565;
+            double magneticChance = 0.065;
             double specialChance = 0.075;
             if (rand.NextDouble() < magneticChance) {
                 newFood.IsMagnetic = true;
