@@ -72,7 +72,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- 's' - Snek`n- Fixed magnetic food`n  probability`n- Virtual printer`n  does something now!"
+$STARTUP_LOGMSG = "- 's' - Snek`n- Magnetic food `n  animation smoothed.`n- Virtual printer`n  does something now!"
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 
 # Import-Module command with detailed parameter explanation
