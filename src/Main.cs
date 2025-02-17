@@ -23,6 +23,8 @@ public class GameForm : Form {
     List<PointF> prevPlayerSnake;
     List<PointF> prevEnemySnake;
     
+    // Updated: store previous food positions by their ID.
+    Dictionary<int, Point> prevFoodPositions = new Dictionary<int, Point>();
     List<Food> foods = new List<Food>();
     int cellSize = 10, cols = 40, rows = 40;
     int playerDX = 1, playerDY = 0;
@@ -47,12 +49,17 @@ public class GameForm : Form {
     // New fields for magnet effect (counts down ticks)
     int playerMagnetTicks = 0, enemyMagnetTicks = 0;
 
+    // Food struct updated with an ID.
     private struct Food {
+        public int Id;
         public Point Position;
         public bool IsSpecial;
         public bool IsMagnetic;  // NEW: magnetic food flag
         public Color FoodColor;
     }
+    
+    // Counter for assigning unique IDs to foods.
+    int nextFoodId = 0;
 
     public GameForm() {
         this.ClientSize = new Size(cols * cellSize, rows * cellSize + 40);
@@ -95,7 +102,7 @@ public class GameForm : Form {
         this.KeyDown += GameForm_KeyDown;
     }
 
-    // Helper for linear interpolation
+    // Helper for linear interpolation (for PointF)
     private PointF Lerp(PointF a, PointF b, float t) {
         return new PointF(a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t);
     }
@@ -193,9 +200,15 @@ public class GameForm : Form {
     }
 
     void UpdateGame() {
-        // Save current positions for interpolation.
+        // Save current snake positions for interpolation.
         prevPlayerSnake = playerSnake.Select(p => new PointF(p.X, p.Y)).ToList();
         prevEnemySnake = enemySnake.Select(p => new PointF(p.X, p.Y)).ToList();
+
+        // Save current food positions for interpolation.
+        var newPrevFoodPositions = new Dictionary<int, Point>();
+        foreach (var food in foods)
+            newPrevFoodPositions[food.Id] = food.Position;
+        prevFoodPositions = newPrevFoodPositions;
 
         animationPhase += 0.2f;
         if (animationPhase > Math.PI * 2)
@@ -331,7 +344,8 @@ public class GameForm : Form {
             RespawnEnemy();
         } else {
             enemySnake.Insert(0, newEnemyHead);
-            int enemyFoodIndex = foods.FindIndex(f => Math.Max(Math.Abs(newEnemyHead.X - f.Position.X), Math.Abs(newEnemyHead.Y - f.Position.Y)) <= 1);            if (enemyFoodIndex != -1) {
+            int enemyFoodIndex = foods.FindIndex(f => Math.Max(Math.Abs(newEnemyHead.X - f.Position.X), Math.Abs(newEnemyHead.Y - f.Position.Y)) <= 1);
+            if (enemyFoodIndex != -1) {
                 Food eaten = foods[enemyFoodIndex];
                 if (eaten.IsMagnetic) {
                     enemyScore += 20;
@@ -397,7 +411,7 @@ public class GameForm : Form {
     }
 
     void GenerateFoods() {
-        foods.Clear();
+        // When generating new foods, assign each a unique ID.
         double chance = rand.NextDouble();
         int count = chance < 0.25 ? 3 : (chance < 0.75 ? 2 : 1);
         for (int i = 0; i < count; i++) {
@@ -419,12 +433,12 @@ public class GameForm : Form {
                 newFood.IsSpecial = true;
                 newFood.IsMagnetic = false;
                 newFood.FoodColor = Color.Empty;
-            }
-            else {
+            } else {
                 newFood.IsSpecial = false;
                 newFood.IsMagnetic = false;
                 newFood.FoodColor = Color.Red;
             }
+            newFood.Id = nextFoodId++;
             foods.Add(newFood);
         }
     }
@@ -572,13 +586,19 @@ public class GameForm : Form {
         DrawSnakeInterpolated(g, prevPlayerSnake, playerSnake, playerBaseColor, true, alpha);
         DrawSnakeInterpolated(g, prevEnemySnake, enemySnake, Color.Blue, false, alpha);
 
+        // Draw foods with interpolated positions.
         foreach (var food in foods) {
+            // Get previous position if available.
+            Point prevPos = prevFoodPositions.ContainsKey(food.Id) ? prevFoodPositions[food.Id] : food.Position;
+            PointF interpolated = Lerp(new PointF(prevPos.X, prevPos.Y), new PointF(food.Position.X, food.Position.Y), alpha);
+
+            float cx = interpolated.X * cellSize + cellSize / 2f;
+            float cy = interpolated.Y * cellSize + cellSize / 2f;
+
             if (food.IsMagnetic) {
                 // Draw magnetic food (1.5x size, oscillating between red and white)
                 float oscillation = (float)(Math.Sin(animationPhase * 2) * 0.5 + 0.5);
                 Color magneticColor = InterpolateColor(Color.Red, Color.White, oscillation);
-                float cx = food.Position.X * cellSize + cellSize / 2f;
-                float cy = food.Position.Y * cellSize + cellSize / 2f;
                 float size = cellSize * 1.5f;
                 RectangleF foodRect = new RectangleF(cx - size / 2, cy - size / 2, size, size);
                 using (SolidBrush brush = new SolidBrush(magneticColor))
@@ -586,14 +606,12 @@ public class GameForm : Form {
             }
             else if (food.IsSpecial) {
                 Color oscillatingColor = GetRainbowColor(rainbowPhase + 0.5f);
-                float cx = food.Position.X * cellSize + cellSize / 2f;
-                float cy = food.Position.Y * cellSize + cellSize / 2f;
                 Rectangle foodRect = new Rectangle((int)(cx - cellSize), (int)(cy - cellSize), cellSize * 2, cellSize * 2);
                 using (SolidBrush brush = new SolidBrush(oscillatingColor))
                     g.FillEllipse(brush, foodRect);
             }
             else {
-                Rectangle foodRect = new Rectangle(food.Position.X * cellSize, food.Position.Y * cellSize, cellSize, cellSize);
+                Rectangle foodRect = new Rectangle((int)(interpolated.X * cellSize), (int)(interpolated.Y * cellSize), cellSize, cellSize);
                 using (SolidBrush brush = new SolidBrush(food.FoodColor))
                     g.FillEllipse(brush, foodRect);
             }
