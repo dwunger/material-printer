@@ -5,6 +5,11 @@ using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Windows.Forms;
 
+// Compiler Notes:
+// Doesn't support arrow expression-bodied property syntax for explicit get accessors
+// Doesn't support inline collection initializers (and tuple initializers)
+// No support for string interpolation ($"" syntax)
+
 public struct Move {
     public int dx;
     public int dy;
