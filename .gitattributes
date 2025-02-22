@@ -1,4 +1,4 @@
-*.ps1=crlf
-*.psm1=crlf
-*.csv=crlf
-*.bat=crlf
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+*.csv text eol=crlf
+*.bat text eol=crlf
