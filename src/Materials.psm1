@@ -305,7 +305,7 @@ class Material {
                 $global:side_pane.push_down("$this")
             }
             if ($this.instrument -eq "CS2500") {
-                $this.open_string = "   Open: $todays_date $todays_time"
+                $this.open_string = " Open: $todays_date $todays_time"
             }
         } else {
             $this.open_string = "   Open:"
@@ -347,9 +347,9 @@ class Material {
                 if ((contains -haystack $this.name -needle "100% Wash")) {
                     $today = Get-Date
                 }
-                $this.expiration_string = "     Exp:{0}" -f ((($today).AddDays($this.stability_time)).ToString($DATE_FMT))
+                $this.expiration_string = "  Exp:{0}" -f ((($today).AddDays($this.stability_time)).ToString($DATE_FMT))
                 if ($this.instrument -eq "CS2500") {
-                    $this.expiration_string = " {0}" -f $todays_time
+                    $this.expiration_string = "  Exp: $todays_date $todays_time"
                 }
             } else {
                 $label += "     Exp:`n"
