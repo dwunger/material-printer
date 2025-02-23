@@ -710,6 +710,9 @@ function Handle-KeyInput {
     elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::S) {
         return "snek"
     }
+    elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::C) {
+        return "cmd"
+    }
     return "continue"
 }
 
@@ -1037,6 +1040,12 @@ function main() {
                     "snek"
                     {
                         Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\BootStrapper.ps1" 2> error.txt' -NoNewWindow -Wait
+ 
+                    }
+                    "cmd"
+                    {
+                        Start-Process powershell_ise.exe '.\src\app.ps1'
+                        Start-Process powershell.exe
  
                     }
            }
