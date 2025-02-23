@@ -46,6 +46,8 @@ $STABILITY_TIME = 4;
 
 $PrimaryDisplayHeight = 18
 #####################################END CONSTANTS#########################################
+Add-Type -AssemblyName System.Windows.Forms # For keycodes
+
 #this shouldn't exist. I don't want to test removing PrinterManager instances, so c'est la vie
 $global:startup = $false
 
@@ -631,7 +633,7 @@ function Select-Material {
 }
 
 # Helper function to handle key input
-function Handle-KeyInput {
+function Handle-KeyInput-Deprecated {
     param (
         [System.Management.Automation.Host.KeyInfo]$key
     )
@@ -670,6 +672,47 @@ function Handle-KeyInput {
 
     return "continue"
 }
+
+function Handle-KeyInput {
+    param (
+        [System.Management.Automation.Host.KeyInfo]$key
+    )
+    
+    if ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::B -or
+        $key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::Escape -or
+        $key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::Left) {
+        return "back"
+    }
+    elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::O) {
+        return "toggle"
+    }
+    elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::P) {
+        return "select-printer"
+    }
+    elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::E) {
+        return "electrolyte-labels"
+    }
+    elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::D) {
+        return "debug"
+    }
+    elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::F) {
+        return "flush-queue"
+    }
+    elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::R) {
+        return "resource-config"
+    }
+    elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::M) {
+        return "muginn"
+    }
+    elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::U) {
+        return "update"
+    }
+    elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::S) {
+        return "snek"
+    }
+    return "continue"
+}
+
 
 # Helper function for printer selection
 function select-printer() {
