@@ -268,7 +268,9 @@ public class GameForm : Form {
             return;
         }
         playerSnake.Insert(0, newHead);
-        int foodIndex = foods.FindIndex(f => Distance(newHead, f.Position) < 0.8f);
+        // Use a more forgiving pickup radius
+        float pickupThreshold = 1.2f;
+        int foodIndex = foods.FindIndex(f => Distance(newHead, f.Position) < pickupThreshold);
         if (foodIndex != -1) {
             Food eaten = foods[foodIndex];
             if (eaten.IsMagnetic) {
@@ -317,7 +319,7 @@ public class GameForm : Form {
             RespawnEnemy();
         } else {
             enemySnake.Insert(0, newEnemyHead);
-            int enemyFoodIndex = foods.FindIndex(f => Distance(newEnemyHead, f.Position) < 0.8f);
+            int enemyFoodIndex = foods.FindIndex(f => Distance(newEnemyHead, f.Position) < pickupThreshold);
             if (enemyFoodIndex != -1) {
                 Food eaten = foods[enemyFoodIndex];
                 if (eaten.IsMagnetic) {
@@ -339,23 +341,29 @@ public class GameForm : Form {
         }
         
         // --- Magnetic Food Attraction ---
-        if (playerMagnetTicks > 0 || enemyMagnetTicks > 0) {
-            for (int i = 0; i < foods.Count; i++) {
-                bool playerActive = playerMagnetTicks > 0;
-                bool enemyActive = enemyMagnetTicks > 0;
-                PointF target;
-                if (playerActive && enemyActive)
-                    target = (Distance(foods[i].Position, playerSnake[0]) <= Distance(foods[i].Position, enemySnake[0])) ? playerSnake[0] : enemySnake[0];
-                else if (playerActive)
-                    target = playerSnake[0];
-                else
-                    target = enemySnake[0];
-                int dx = target.X > foods[i].Position.X ? 1 : (target.X < foods[i].Position.X ? -1 : 0);
-                int dy = target.Y > foods[i].Position.Y ? 1 : (target.Y < foods[i].Position.Y ? -1 : 0);
-                Food f = foods[i];
-                f.Position = new PointF(f.Position.X + dx, f.Position.Y + dy);
-                foods[i] = f;
+        // Smoothly move food toward the active magnet target instead of jumping by whole cells.
+        for (int i = 0; i < foods.Count; i++) {
+            bool playerActive = playerMagnetTicks > 0;
+            bool enemyActive = enemyMagnetTicks > 0;
+            PointF target;
+            if (playerActive && enemyActive)
+                target = (Distance(foods[i].Position, playerSnake[0]) <= Distance(foods[i].Position, enemySnake[0])) ? playerSnake[0] : enemySnake[0];
+            else if (playerActive)
+                target = playerSnake[0];
+            else
+                target = enemySnake[0];
+            
+            float attractionSpeed = 0.5f;
+            float diffX = target.X - foods[i].Position.X;
+            float diffY = target.Y - foods[i].Position.Y;
+            float dist = (float)Math.Sqrt(diffX * diffX + diffY * diffY);
+            if (dist > 0.0001f) {
+                diffX = attractionSpeed * diffX / dist;
+                diffY = attractionSpeed * diffY / dist;
             }
+            Food f = foods[i];
+            f.Position = new PointF(f.Position.X + diffX, f.Position.Y + diffY);
+            foods[i] = f;
         }
         if (playerMagnetTicks > 0) playerMagnetTicks--;
         if (enemyMagnetTicks > 0) enemyMagnetTicks--;
