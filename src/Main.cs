@@ -39,7 +39,8 @@ public class MainMenuForm : Form {
             "- Added weak magnetism near snake heads.\n" +
             "- Boosting now removes one segment per tick.\n" +
             "- Lowered food spawn probability with per-tick chance.\n" +
-            "- All recent changes integrated.";
+            "- Grid background with gray boundaries added.\n" +
+            "- Rainbow effect on player triggered by super food.";
         changelogLabel.Location = new Point(10, 20);
         changelogLabel.Size = new Size(230, 270);
         changelogLabel.Font = new Font("Arial", 9);
@@ -66,8 +67,7 @@ public class MainMenuForm : Form {
 }
 
 //
-// GameForm: The main game (version 1.0.10) with free movement, magnetism, boosting, etc.
-// (All previous changes are integrated.)
+// GameForm: The main game (version 1.0.10) with grid background, improved food pickup, and super-food-triggered rainbow effect.
 //
 public class GameForm : Form {
     Timer logicTimer;
@@ -104,6 +104,8 @@ public class GameForm : Form {
     DateTime lastUpdateTime;
     
     int playerMagnetTicks = 0, enemyMagnetTicks = 0;
+    // New: superFoodTicks triggers rainbow effect on player when > 0
+    int superFoodTicks = 0;
     
     // Food struct using float positions
     private struct Food {
@@ -282,6 +284,8 @@ public class GameForm : Form {
                 playerScore += 100;
                 PointF tail = playerSnake[playerSnake.Count - 1];
                 for (int i = 0; i < 30; i++) playerSnake.Add(tail);
+                // Trigger rainbow effect via super food
+                superFoodTicks = 100;
             } else {
                 playerScore += 10;
             }
@@ -367,6 +371,7 @@ public class GameForm : Form {
         }
         if (playerMagnetTicks > 0) playerMagnetTicks--;
         if (enemyMagnetTicks > 0) enemyMagnetTicks--;
+        if (superFoodTicks > 0) superFoodTicks--;
         
         // --- Weak Magnetism from snake heads ---
         for (int i = 0; i < foods.Count; i++) {
@@ -455,8 +460,9 @@ public class GameForm : Form {
         }
         float headRadius = cellSize * 0.8f;
         float tailRadius = cellSize * 0.4f;
-        Color headColor = isPlayer ? GetRainbowColor(rainbowPhase) : baseColor;
-        Color tailColor = isPlayer ? GetRainbowColor(rainbowPhase + 0.3f) : ControlPaint.Dark(baseColor);
+        // Only trigger rainbow effect for player if super food is active.
+        Color headColor = (isPlayer && superFoodTicks > 0) ? GetRainbowColor(rainbowPhase) : playerBaseColor;
+        Color tailColor = (isPlayer && superFoodTicks > 0) ? GetRainbowColor(rainbowPhase + 0.3f) : ControlPaint.Dark(playerBaseColor);
         for (int i = 0; i < snake.Count; i++) {
             float t = snake.Count > 1 ? (float)i / (snake.Count - 1) : 0f;
             float radius = headRadius * (1 - t) + tailRadius * t;
@@ -545,6 +551,18 @@ public class GameForm : Form {
         base.OnPaint(e);
         Graphics g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
+        
+        // Draw grid background over game area with gray lines and border.
+        Rectangle gridRect = new Rectangle(0, 0, cols * cellSize, rows * cellSize);
+        for (int i = 0; i <= cols; i++) {
+            int x = i * cellSize;
+            g.DrawLine(Pens.Gray, x, 0, x, gridRect.Height);
+        }
+        for (int j = 0; j <= rows; j++) {
+            int y = j * cellSize;
+            g.DrawLine(Pens.Gray, 0, y, gridRect.Width, y);
+        }
+        g.DrawRectangle(Pens.Gray, gridRect);
         
         float alpha = (float)(DateTime.Now - lastUpdateTime).TotalMilliseconds / logicTimer.Interval;
         if (alpha > 1f) alpha = 1f;
