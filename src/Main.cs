@@ -485,8 +485,8 @@ public class GameForm : Form {
 
     // Generates food at random positions.
     void GenerateFoods() {
-        double chance = rand.NextDouble();
-        int count = chance < 0.025 ? 3 : (chance < 0.075 ? 2 : 1);
+        int count = 10; 
+
         for (int i = 0; i < count; i++) {
             Food newFood;
             do {
@@ -494,7 +494,7 @@ public class GameForm : Form {
             } while (playerSnake.Any(p => Distance(p, newFood.Position) < 0.5f) ||
                      enemySnakes.Any(e => e.Segments.Any(p => Distance(p, newFood.Position) < 0.5f)) ||
                      foods.Any(f => Distance(f.Position, newFood.Position) < 0.5f));
-            double magneticChance = 0.065;
+            double magneticChance = 0.015;
             double specialChance = 0.075;
             if (rand.NextDouble() < magneticChance) {
                 newFood.IsMagnetic = true;
