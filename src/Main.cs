@@ -10,7 +10,7 @@ using System.Windows.Forms;
 //
 public class MainMenuForm : Form {
     public MainMenuForm() {
-        this.Text = "Snek Menu - Version 1.0.10";
+        this.Text = "Snek Menu - Version 1.1.0";
         this.ClientSize = new Size(600, 400);
         this.StartPosition = FormStartPosition.CenterScreen;
         this.FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -33,14 +33,11 @@ public class MainMenuForm : Form {
         changelogBox.Location = new Point(320, 20);
         changelogBox.Size = new Size(250, 300);
         Label changelogLabel = new Label();
-        changelogLabel.Text = "Version 1.0.10:\n" +
-            "- On enemy death, each segment becomes base food.\n" +
-            "- Snakes move freely using float positions (not grid-locked).\n" +
-            "- Added weak magnetism near snake heads.\n" +
-            "- Boosting now removes one segment per tick.\n" +
-            "- Lowered food spawn probability with per-tick chance.\n" +
-            "- Grid background with gray boundaries added.\n" +
-            "- Rainbow effect on player triggered by super food.";
+        changelogLabel.Text = "Version 1.1.0:\n" +
+            "- Adjusted self and enemy collision detection using a collision threshold.\n" +
+            "- Fixed enemy magnetism bug by only attracting food when enemyMagnetTicks is active.\n" +
+            "- Snakes now move freely using float positions.\n" +
+            "- Added grid background and improved food pickup.";
         changelogLabel.Location = new Point(10, 20);
         changelogLabel.Size = new Size(230, 270);
         changelogLabel.Font = new Font("Arial", 9);
@@ -67,7 +64,7 @@ public class MainMenuForm : Form {
 }
 
 //
-// GameForm: The main game (version 1.0.10) with grid background, improved food pickup, and super-food-triggered rainbow effect.
+// GameForm: The main game (version 1.1.0) with grid background, improved collision detection, and super-food-triggered rainbow effect.
 //
 public class GameForm : Form {
     Timer logicTimer;
@@ -107,6 +104,9 @@ public class GameForm : Form {
     // New: superFoodTicks triggers rainbow effect on player when > 0
     int superFoodTicks = 0;
     
+    // Collision threshold used for self and enemy collisions (in grid units)
+    const float collisionThreshold = 0.7f;
+    
     // Food struct using float positions
     private struct Food {
         public int Id;
@@ -120,7 +120,7 @@ public class GameForm : Form {
     public GameForm() {
         this.ClientSize = new Size(cols * cellSize, rows * cellSize + 40);
         this.DoubleBuffered = true;
-        this.Text = "Snek - Version 1.0.10";
+        this.Text = "Snek - Version 1.1.0";
         this.KeyPreview = true;
         
         // Initialize snakes
@@ -259,10 +259,10 @@ public class GameForm : Form {
         playerVY = candidateVY;
         float boostMult = (isBoosting && playerSnake.Count > 1) ? 1.5f : 1.0f;
         PointF newHead = new PointF(head.X + playerVX * baseSpeed * boostMult, head.Y + playerVY * baseSpeed * boostMult);
-        // Skip immediate segment (index 1) in self-collision check.
+        // Check collision against self (skipping head and neck) and enemy snake (skipping enemy head)
         if (IsOutOfBounds(newHead) ||
-            (playerSnake.Count >= 3 && playerSnake.Skip(2).Any(p => Distance(p, newHead) < 0.5f)) ||
-            enemySnake.Skip(1).Any(p => Distance(p, newHead) < 0.5f)) {
+            (playerSnake.Count >= 3 && playerSnake.Skip(2).Any(p => Distance(p, newHead) < collisionThreshold)) ||
+            enemySnake.Skip(1).Any(p => Distance(p, newHead) < collisionThreshold)) {
             logicTimer.Stop();
             renderTimer.Stop();
             MessageBox.Show("Game Over! Your Score: " + playerScore);
@@ -309,8 +309,8 @@ public class GameForm : Form {
         }
         PointF newEnemyHead = new PointF(enemyHead.X + enemyVX * baseSpeed, enemyHead.Y + enemyVY * baseSpeed);
         if (IsOutOfBounds(newEnemyHead) ||
-            (enemySnake.Count >= 3 && enemySnake.Skip(2).Any(p => Distance(p, newEnemyHead) < 0.5f)) ||
-            playerSnake.Skip(1).Any(p => Distance(p, newEnemyHead) < 0.5f)) {
+            (enemySnake.Count >= 3 && enemySnake.Skip(2).Any(p => Distance(p, newEnemyHead) < collisionThreshold)) ||
+            playerSnake.Skip(1).Any(p => Distance(p, newEnemyHead) < collisionThreshold)) {
             foreach (var seg in enemySnake) {
                 Food newFood;
                 newFood.Position = seg;
@@ -345,16 +345,19 @@ public class GameForm : Form {
         }
         
         // --- Magnetic Food Attraction ---
-        // Smoothly move food toward the active magnet target instead of jumping by whole cells.
+        // Only attract food if at least one snake has active magnet ticks.
         for (int i = 0; i < foods.Count; i++) {
             bool playerActive = playerMagnetTicks > 0;
             bool enemyActive = enemyMagnetTicks > 0;
+            if (!playerActive && !enemyActive)
+                continue; // No magnetism active, skip attraction.
+
             PointF target;
             if (playerActive && enemyActive)
                 target = (Distance(foods[i].Position, playerSnake[0]) <= Distance(foods[i].Position, enemySnake[0])) ? playerSnake[0] : enemySnake[0];
             else if (playerActive)
                 target = playerSnake[0];
-            else
+            else // enemyActive is true here
                 target = enemySnake[0];
             
             float attractionSpeed = 0.5f;
@@ -372,26 +375,6 @@ public class GameForm : Form {
         if (playerMagnetTicks > 0) playerMagnetTicks--;
         if (enemyMagnetTicks > 0) enemyMagnetTicks--;
         if (superFoodTicks > 0) superFoodTicks--;
-        
-        // --- Weak Magnetism from snake heads ---
-        for (int i = 0; i < foods.Count; i++) {
-            float vx = 0, vy = 0;
-            if (Distance(foods[i].Position, playerSnake[0]) <= 1.0f) {
-                float dx = playerSnake[0].X - foods[i].Position.X;
-                float dy = playerSnake[0].Y - foods[i].Position.Y;
-                float len = (float)Math.Sqrt(dx * dx + dy * dy);
-                if (len > 0) { vx += 0.2f * dx / len; vy += 0.2f * dy / len; }
-            }
-            if (Distance(foods[i].Position, enemySnake[0]) <= 1.0f) {
-                float dx = enemySnake[0].X - foods[i].Position.X;
-                float dy = enemySnake[0].Y - foods[i].Position.Y;
-                float len = (float)Math.Sqrt(dx * dx + dy * dy);
-                if (len > 0) { vx += 0.2f * dx / len; vy += 0.2f * dy / len; }
-            }
-            Food f = foods[i];
-            f.Position = new PointF(f.Position.X + vx, f.Position.Y + vy);
-            foods[i] = f;
-        }
         
         if (rand.NextDouble() < 0.05) GenerateFoods();
         lastUpdateTime = DateTime.Now;
@@ -441,6 +424,8 @@ public class GameForm : Form {
         enemySnake.Add(p);
         enemyScore /= 2;
         enemyVX = 1f; enemyVY = 0f;
+        // Reset enemy magnetism so it doesn't always have magnetic effect
+        enemyMagnetTicks = 0;
     }
     
     Color InterpolateColor(Color start, Color end, float t) {
