@@ -333,7 +333,7 @@ public class GameForm : Form {
                 playerScore += 20;
                 PointF tail = playerSnake[playerSnake.Count - 1];
                 for (int i = 0; i < 3; i++) playerSnake.Add(tail);
-                playerMagnetTicks = 100;
+                playerMagnetTicks = 20;
             } else if (eaten.IsSpecial) {
                 playerScore += 100;
                 PointF tail = playerSnake[playerSnake.Count - 1];
@@ -402,7 +402,7 @@ public class GameForm : Form {
                     enemy.Score += 20;
                     PointF tail = enemy.Segments[enemy.Segments.Count - 1];
                     for (int i = 0; i < 3; i++) enemy.Segments.Add(tail);
-                    enemy.MagnetTicks = 100;
+                    enemy.MagnetTicks = 20;
                 } else if (eaten.IsSpecial) {
                     enemy.Score += 100;
                     PointF tail = enemy.Segments[enemy.Segments.Count - 1];
