@@ -14,7 +14,7 @@ $DEBUG = $false
 if (-not (Test-Path '.\muginn')) { mkdir '.\muginn' } # Since we can't force incremental version updates
 
 # We don't have git, so I'll just handroll something
-if ($LOCAL_VERSION -lt $REMOTE_VERSION) {
+if ([System.Version]$LOCAL_VERSION -lt [System.Version]$REMOTE_VERSION) {
     
     Update-ClientVerbose
     Clear-Host
