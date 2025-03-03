@@ -117,6 +117,43 @@ function Setup-MaterialGroups {
     return $MaterialGroupsByInstrument
 }
 
+function Setup-MaterialGroups-Async {
+    param(
+        [string]$RemoteContent
+    )
+    # Initialize the MaterialGroupsByInstrument hashtable
+    $MaterialGroupsByInstrument = @{}
+
+    # Process local CSV
+    $localFilePath = "./src/rsrc_info.csv"
+    if (-not (Test-Path $localFilePath)) {
+        Write-Host "Error: Local file 'rsrc_info.csv' not found."
+        return $null
+    }
+    $localFileContent = Get-Content -Path $localFilePath -Raw
+    $localLines = $localFileContent -split "`n"
+    $success = Process-MaterialGroupsLines -lines $localLines -MaterialGroupsByInstrument ([ref]$MaterialGroupsByInstrument) -Delimiter ";"
+    if (-not $success) {
+        Write-Host "Error: Failed to process local material groups."
+        return $null
+    }
+
+    # Process remote CSV content provided as parameter
+    if (-not $RemoteContent) {
+        Write-Host "Error: Remote CSV content not provided."
+        return $null
+    }
+    $processedContent = Preprocess-OnlineCSV -content $RemoteContent
+    $remoteLines = $processedContent -split "`n"
+    $success = Process-MaterialGroupsLines -lines $remoteLines -MaterialGroupsByInstrument ([ref]$MaterialGroupsByInstrument) -Delimiter ";"
+    if (-not $success) {
+        Write-Host "Error: Failed to process remote material groups."
+        return $null
+    }
+
+    return $MaterialGroupsByInstrument
+}
+
 function Preprocess-OnlineCSV {
     param(
         [string]$content
