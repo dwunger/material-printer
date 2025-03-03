@@ -3,6 +3,18 @@ using module '.\ScreenManager.psm1'
 using module '..\huginn\utils.psm1'
 using module '.\muginn.psm1'
 
+# Launch asynchronous job to fetch the online CSV
+$csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRL6PKYNT-6OfbPxJDU7TiYXKYVYY75YhlEmfAD1HRF0fWXwTbJ2JwbRUG-jgOiOBKl-f_QIOjyG5Ne/pub?output=csv"
+$job = Start-Job -ScriptBlock {
+    param($url)
+    try {
+        $response = Invoke-WebRequest -Uri $url -UseBasicParsing
+        return $response.Content
+    } catch {
+        return $null
+    }
+} -ArgumentList $csvUrl
+
 #TODOs
 # Printer configuration setup file (IP address, print method (xylene/standard))
 # Add menu for printer configuration/selection
@@ -878,6 +890,8 @@ function Muginn {
 }
 
 
+
+
 function main() {
     
     #Set-Window-Dimensions -width 69 -height 20 # Without side pane
@@ -898,7 +912,10 @@ function main() {
     $printerManager = [PrinterManager]::new("./src/printer_config.csv")
     $global:printerIp = $printerManager.DefaultPrinterIp
 
-    $materialGroupsByInstrument = Setup-MaterialGroups
+    # Wait for the remote CSV fetch to complete
+    $remoteContent = Receive-Job -Job $global:job -Wait -AutoRemoveJob
+
+    $materialGroupsByInstrument = Setup-MaterialGroups-Async -RemoteContent $remoteContent
     if ($null -eq $materialGroupsByInstrument) {
         Write-Host "Failed to initialize material groups. Exiting."
         return 1
