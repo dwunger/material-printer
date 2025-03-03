@@ -150,12 +150,19 @@ function Update-Client {
     $FilePaths = Get-RemoteIndexPaths
     $FileURIs = Get-RemoteIndexURIs
 
+    $headers = @{
+        "Cache-Control" = "no-cache, no-store, must-revalidate"
+        "Pragma"      = "no-cache"
+        "Expires"     = "0"
+    }
+
     for ($i = 0; $i -lt $FileURIs.Length; $i++) {
         Ensure-Path $FilePaths[$i]
-        Invoke-WebRequest -Uri $FileURIs[$i] -OutFile $FilePaths[$i]
+        Invoke-WebRequest -Uri $FileURIs[$i] -Headers $headers -OutFile $FilePaths[$i]
     }
 
 }
+
 function Update-ClientVerbose {
     # Create a new logger instance
     $logger = [UpdateLogger]::new()
