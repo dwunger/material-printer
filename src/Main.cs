@@ -10,7 +10,7 @@ using System.Windows.Forms;
 //
 public class MainMenuForm : Form {
     public MainMenuForm() {
-        this.Text = "Snek Menu - Version 1.1.0";
+        this.Text = "Snek Menu - Version 1.1.1";
         this.ClientSize = new Size(600, 400);
         this.StartPosition = FormStartPosition.CenterScreen;
         this.FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -33,14 +33,9 @@ public class MainMenuForm : Form {
         changelogBox.Location = new Point(320, 20);
         changelogBox.Size = new Size(250, 300);
         Label changelogLabel = new Label();
-        changelogLabel.Text = "Version 1.1.0:\n" +
-            "- Adjusted self and enemy collision detection using a collision threshold.\n" +
-            "- Fixed enemy magnetism bug by only attracting food when enemyMagnetTicks is active.\n" +
-            "- Snakes now move freely using float positions.\n" +
-            "- Added a circular map boundary (~3x visible area) with dynamic camera tracking.\n" +
-            "- Introduced multiple enemy snakes with unique name tags and varied base colors,\n" +
-            "  with improved AI to avoid self, boundary, and inter-snake collisions.\n" +
-            "- Added grid background and improved food pickup.";
+        changelogLabel.Text = "Version 1.1.1:\n" +
+            "- Randomized normal food color and added transparency.\n" +
+            "- Added new special food: BigHead. I haven't decided on its effect yet.";
         changelogLabel.Location = new Point(10, 20);
         changelogLabel.Size = new Size(230, 270);
         changelogLabel.Font = new Font("Arial", 9);
@@ -82,7 +77,7 @@ public class GameForm : Form {
     List<Food> foods = new List<Food>();
     int cellSize = 10, cols = 40, rows = 40;
 
-    // Map boundary (circular) variables â€“ center is player's start
+    // Map boundary (circular) variables – center is player's start
     PointF mapCenter;
     float mapRadius;
 
@@ -109,16 +104,19 @@ public class GameForm : Form {
 
     int playerMagnetTicks = 0;
     int superFoodTicks = 0;
+    int bigHeadTicks = 0; // Ticks remaining for BigHead effect
 
     // Collision threshold (in grid units)
     const float collisionThreshold = 0.7f;
 
-    // Food struct using float positions
+    // Food struct using float positions.
+    // Added IsBigHead flag to distinguish BigHead food.
     private struct Food {
         public int Id;
         public PointF Position;
         public bool IsSpecial;
         public bool IsMagnetic;
+        public bool IsBigHead;
         public Color FoodColor;
     }
     int nextFoodId = 0;
@@ -152,11 +150,11 @@ public class GameForm : Form {
         this.Text = "Snek - Version 1.1.0";
         this.KeyPreview = true;
 
-        // Set up the circular map â€“ center at player's start and radius ~ 3x visible grid (diameter 3x visible width)
+        // Set up the circular map – center at player's start and radius ~ 3x visible grid.
         mapCenter = new PointF(cols / 2f, rows / 2f);
         mapRadius = Math.Max(cols, rows) * 1.5f; // For cols=40, radius=60
 
-        // Initialize player snake at center
+        // Initialize player snake at center.
         playerSnake = new List<PointF> { new PointF(cols / 2f, rows / 2f) };
         prevPlayerSnake = playerSnake.Select(p => new PointF(p.X, p.Y)).ToList();
 
@@ -275,6 +273,8 @@ public class GameForm : Form {
 
     // Update game logic.
     void UpdateGame() {
+        float pickupThreshold = 1.2f;
+
         prevPlayerSnake = playerSnake.Select(p => new PointF(p.X, p.Y)).ToList();
         foreach (var enemy in enemySnakes)
             enemy.PrevSegments = enemy.Segments.Select(p => new PointF(p.X, p.Y)).ToList();
@@ -315,6 +315,8 @@ public class GameForm : Form {
         float boostMult = (isBoosting && playerSnake.Count > 1) ? 1.5f : 1.0f;
         PointF newHead = new PointF(head.X + playerVX * baseSpeed * boostMult, head.Y + playerVY * baseSpeed * boostMult);
 
+        // Use a larger pickup threshold if BigHead effect is active.
+        float effectivePickupThreshold = (bigHeadTicks > 0 ? pickupThreshold * 5 : pickupThreshold);
         if (IsOutOfBounds(newHead) ||
             (playerSnake.Count >= 3 && playerSnake.Skip(2).Any(p => Distance(p, newHead) < collisionThreshold)) ||
             enemySnakes.Any(enemy => enemy.Segments.Skip(1).Any(p => Distance(p, newHead) < collisionThreshold))) {
@@ -325,8 +327,7 @@ public class GameForm : Form {
             return;
         }
         playerSnake.Insert(0, newHead);
-        float pickupThreshold = 1.2f;
-        int foodIndex = foods.FindIndex(f => Distance(newHead, f.Position) < pickupThreshold);
+        int foodIndex = foods.FindIndex(f => Distance(newHead, f.Position) < effectivePickupThreshold);
         if (foodIndex != -1) {
             Food eaten = foods[foodIndex];
             if (eaten.IsMagnetic) {
@@ -334,6 +335,11 @@ public class GameForm : Form {
                 PointF tail = playerSnake[playerSnake.Count - 1];
                 for (int i = 0; i < 3; i++) playerSnake.Add(tail);
                 playerMagnetTicks = 20;
+            } else if (eaten.IsBigHead) {
+                playerScore += 40;
+                PointF tail = playerSnake[playerSnake.Count - 1];
+                for (int i = 0; i < 4; i++) playerSnake.Add(tail);
+                bigHeadTicks = 150;
             } else if (eaten.IsSpecial) {
                 playerScore += 100;
                 PointF tail = playerSnake[playerSnake.Count - 1];
@@ -354,7 +360,6 @@ public class GameForm : Form {
 
         foreach (var enemy in enemySnakes) {
             PointF enemyHead = enemy.Segments[0];
-            // If no food exists, try regenerating or skip enemy update
             if (!foods.Any()) { GenerateFoods(); }
             if (!foods.Any()) continue;
             Food targetFood = foods.OrderBy(f => Distance(f.Position, enemyHead)).First();
@@ -403,6 +408,11 @@ public class GameForm : Form {
                     PointF tail = enemy.Segments[enemy.Segments.Count - 1];
                     for (int i = 0; i < 3; i++) enemy.Segments.Add(tail);
                     enemy.MagnetTicks = 20;
+                } else if (eaten.IsBigHead) {
+                    enemy.Score += 40;
+                    PointF tail = enemy.Segments[enemy.Segments.Count - 1];
+                    for (int i = 0; i < 4; i++) enemy.Segments.Add(tail);
+                    // Enemies do not get a head expansion effect.
                 } else if (eaten.IsSpecial) {
                     enemy.Score += 100;
                     PointF tail = enemy.Segments[enemy.Segments.Count - 1];
@@ -450,12 +460,13 @@ public class GameForm : Form {
         }
         if (playerMagnetTicks > 0) playerMagnetTicks--;
         if (superFoodTicks > 0) superFoodTicks--;
+        if (bigHeadTicks > 0) bigHeadTicks--;
 
         if (rand.NextDouble() < 0.05) GenerateFoods();
         lastUpdateTime = DateTime.Now;
     }
 
-    // Checks if an enemyâ€™s candidate move avoids collisions.
+    // Checks if an enemy’s candidate move avoids collisions.
     private bool IsEnemyMoveSafe(EnemySnake enemy, PointF newHead) {
         if (IsOutOfBounds(newHead)) return false;
         if (enemy.Segments.Count >= 3 && enemy.Segments.Skip(2).Any(p => Distance(p, newHead) < collisionThreshold))
@@ -486,7 +497,6 @@ public class GameForm : Form {
     // Generates food at random positions.
     void GenerateFoods() {
         int count = 10; 
-
         for (int i = 0; i < count; i++) {
             Food newFood;
             do {
@@ -494,20 +504,30 @@ public class GameForm : Form {
             } while (playerSnake.Any(p => Distance(p, newFood.Position) < 0.5f) ||
                      enemySnakes.Any(e => e.Segments.Any(p => Distance(p, newFood.Position) < 0.5f)) ||
                      foods.Any(f => Distance(f.Position, newFood.Position) < 0.5f));
+            double bigHeadChance = 0.020;
             double magneticChance = 0.015;
             double specialChance = 0.075;
-            if (rand.NextDouble() < magneticChance) {
+            if (rand.NextDouble() < bigHeadChance) {
+                newFood.IsBigHead = true;
+                newFood.IsSpecial = false;
+                newFood.IsMagnetic = false;
+                newFood.FoodColor = Color.Empty;
+            }
+            else if (rand.NextDouble() < magneticChance) {
                 newFood.IsMagnetic = true;
                 newFood.IsSpecial = false;
+                newFood.IsBigHead = false;
                 newFood.FoodColor = Color.Red;
             }
             else if (rand.NextDouble() < specialChance) {
                 newFood.IsSpecial = true;
                 newFood.IsMagnetic = false;
+                newFood.IsBigHead = false;
                 newFood.FoodColor = Color.Empty;
             } else {
                 newFood.IsSpecial = false;
                 newFood.IsMagnetic = false;
+                newFood.IsBigHead = false;
                 newFood.FoodColor = Color.FromArgb(191, rand.Next(256), rand.Next(256), rand.Next(256));
             }
             newFood.Id = nextFoodId++;
@@ -539,6 +559,13 @@ public class GameForm : Form {
         for (int i = 0; i < snake.Count; i++) {
             float t = snake.Count > 1 ? (float)i / (snake.Count - 1) : 0f;
             float radius = headRadius * (1 - t) + tailRadius * t;
+            // Apply BigHead effect to the player's head.
+            if (isPlayer && i == 0 && bigHeadTicks > 0) {
+                float elapsed = 150 - bigHeadTicks;
+                float tNorm = elapsed / 150f;
+                float scale = 1 + 4 * (float)Math.Sin(Math.PI * tNorm);
+                radius *= scale;
+            }
             Color nodeColor = InterpolateColor(headColor, tailColor, t);
             float cx = interp[i].X * cellSize + cellSize / 2f;
             float cy = interp[i].Y * cellSize + cellSize / 2f;
@@ -622,7 +649,7 @@ public class GameForm : Form {
         Graphics g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
-        // Use the same interpolation factor as used for snake drawing
+        // Use the same interpolation factor as used for snake drawing.
         float alpha = (float)(DateTime.Now - lastUpdateTime).TotalMilliseconds / logicTimer.Interval;
         if (alpha > 1f) alpha = 1f;
         // Interpolate the player's head position to smooth camera movement.
@@ -672,7 +699,20 @@ public class GameForm : Form {
             float cx = interpolated.X * cellSize + cellSize / 2f;
             float cy = interpolated.Y * cellSize + cellSize / 2f;
 
-            if (food.IsMagnetic) {
+            if (food.IsBigHead) {
+                // BigHead food is drawn a bit larger with a cyan-magenta gradient.
+                float size = cellSize * 2.5f;
+                RectangleF foodRect = new RectangleF(cx - size/2, cy - size/2, size, size);
+                using (GraphicsPath path = new GraphicsPath()) {
+                    path.AddEllipse(foodRect);
+                    using (PathGradientBrush pgb = new PathGradientBrush(path)) {
+                        pgb.CenterColor = Color.Cyan;
+                        pgb.SurroundColors = new Color[] { Color.Magenta };
+                        g.FillEllipse(pgb, foodRect);
+                    }
+                }
+            }
+            else if (food.IsMagnetic) {
                 float oscillation = (float)(Math.Sin(animationPhase * 2) * 0.5 + 0.5);
                 Color magneticColor = InterpolateColor(Color.Red, Color.White, oscillation);
                 float size = cellSize * 1.5f;
