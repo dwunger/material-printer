@@ -508,7 +508,7 @@ public class GameForm : Form {
             } else {
                 newFood.IsSpecial = false;
                 newFood.IsMagnetic = false;
-                newFood.FoodColor = Color.Red;
+                newFood.FoodColor = Color.FromArgb(191, rand.Next(256), rand.Next(256), rand.Next(256));
             }
             newFood.Id = nextFoodId++;
             foods.Add(newFood);
