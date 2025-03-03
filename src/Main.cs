@@ -77,7 +77,7 @@ public class GameForm : Form {
     List<Food> foods = new List<Food>();
     int cellSize = 10, cols = 40, rows = 40;
 
-    // Map boundary (circular) variables – center is player's start
+    // Map boundary (circular) variables â€“ center is player's start
     PointF mapCenter;
     float mapRadius;
 
@@ -150,7 +150,7 @@ public class GameForm : Form {
         this.Text = "Snek - Version 1.1.0";
         this.KeyPreview = true;
 
-        // Set up the circular map – center at player's start and radius ~ 3x visible grid.
+        // Set up the circular map â€“ center at player's start and radius ~ 3x visible grid.
         mapCenter = new PointF(cols / 2f, rows / 2f);
         mapRadius = Math.Max(cols, rows) * 1.5f; // For cols=40, radius=60
 
@@ -466,7 +466,7 @@ public class GameForm : Form {
         lastUpdateTime = DateTime.Now;
     }
 
-    // Checks if an enemy’s candidate move avoids collisions.
+    // Checks if an enemyâ€™s candidate move avoids collisions.
     private bool IsEnemyMoveSafe(EnemySnake enemy, PointF newHead) {
         if (IsOutOfBounds(newHead)) return false;
         if (enemy.Segments.Count >= 3 && enemy.Segments.Skip(2).Any(p => Distance(p, newHead) < collisionThreshold))
@@ -637,8 +637,11 @@ public class GameForm : Form {
                         using (SolidBrush solidBrush = new SolidBrush(nodeColor))
                             g.FillPath(solidBrush, path);
                     } else {
-                        using (LinearGradientBrush lgBrush = new LinearGradientBrush(p1, nextInterp, nodeColor, nextColor))
-                            g.FillPath(lgBrush, path);
+                        // Instead of creating a new LinearGradientBrush per segment,
+                        // compute an average color and use a SolidBrush.
+                        Color avgColor = InterpolateColor(nodeColor, nextColor, 0.5f);
+                        using (SolidBrush solidBrush = new SolidBrush(avgColor))
+                            g.FillPath(solidBrush, path);
                     }
                 }
             }
