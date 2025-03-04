@@ -61,6 +61,19 @@ public class MainMenuForm : Form {
     }
 }
 
+
+public struct CandidateMove {
+    public float VX;
+    public float VY;
+    public float Dist;
+    public CandidateMove(float vx, float vy, float dist) {
+        this.VX = vx;
+        this.VY = vy;
+        this.Dist = dist;
+    }
+}
+
+
 //
 // GameForm: The main game with circular boundary, camera tracking, and multiple enemy snakes.
 //
@@ -77,7 +90,7 @@ public class GameForm : Form {
     List<Food> foods = new List<Food>();
     int cellSize = 10, cols = 40, rows = 40;
 
-    // Map boundary (circular) variables – center is player's start
+    // Map boundary (circular) variables â€“ center is player's start
     PointF mapCenter;
     float mapRadius;
 
@@ -150,7 +163,7 @@ public class GameForm : Form {
         this.Text = "Snek - Version 1.1.0";
         this.KeyPreview = true;
 
-        // Set up the circular map – center at player's start and radius ~ 3x visible grid.
+        // Set up the circular map â€“ center at player's start and radius ~ 3x visible grid.
         mapCenter = new PointF(cols / 2f, rows / 2f);
         mapRadius = Math.Max(cols, rows) * 1.5f; // For cols=40, radius=60
 
@@ -362,6 +375,8 @@ public class GameForm : Form {
             PointF enemyHead = enemy.Segments[0];
             if (!foods.Any()) { GenerateFoods(); }
             if (!foods.Any()) continue;
+    
+            // Target the closest food.
             Food targetFood = foods.OrderBy(f => Distance(f.Position, enemyHead)).First();
             float diffEx = targetFood.Position.X - enemyHead.X;
             float diffEy = targetFood.Position.Y - enemyHead.Y;
@@ -369,8 +384,8 @@ public class GameForm : Form {
             float desiredVX = (lenE > 0.0001f) ? diffEx / lenE : enemy.VX;
             float desiredVY = (lenE > 0.0001f) ? diffEy / lenE : enemy.VY;
 
-            bool safeMoveFound = false;
-            float finalVX = desiredVX, finalVY = desiredVY;
+            // Generate candidate moves from several angle offsets.
+            List<CandidateMove> candidates = new List<CandidateMove>();
             float baseAngle = (float)Math.Atan2(desiredVY, desiredVX);
             float[] angleOffsets = new float[] { 0, 15, -15, 30, -30, 45, -45 };
             foreach (var offset in angleOffsets) {
@@ -380,19 +395,21 @@ public class GameForm : Form {
                 float testVY = (float)Math.Sin(testAngle);
                 PointF testHead = new PointF(enemyHead.X + testVX * baseSpeed, enemyHead.Y + testVY * baseSpeed);
                 if (IsEnemyMoveSafe(enemy, testHead)) {
-                    finalVX = testVX;
-                    finalVY = testVY;
-                    safeMoveFound = true;
-                    break;
+                    float distToPlayer = Distance(testHead, playerSnake[0]);
+                    candidates.Add(new CandidateMove(testVX, testVY, distToPlayer));
                 }
             }
-            if (!safeMoveFound) {
+    
+            if (candidates.Count == 0) {
                 RespawnEnemy(enemy);
                 continue;
             }
-
-            enemy.VX = finalVX;
-            enemy.VY = finalVY;
+    
+            // Choose the candidate that maximizes the distance from the player's head.
+            CandidateMove best = candidates.OrderByDescending(c => c.Dist).First();
+            enemy.VX = best.VX;
+            enemy.VY = best.VY;
+    
             PointF newEnemyHead = new PointF(enemyHead.X + enemy.VX * baseSpeed, enemyHead.Y + enemy.VY * baseSpeed);
             if (!IsEnemyMoveSafe(enemy, newEnemyHead)) {
                 RespawnEnemy(enemy);
@@ -400,7 +417,7 @@ public class GameForm : Form {
             }
             enemy.Segments.Insert(0, newEnemyHead);
 
-            int enemyFoodIndex = foods.FindIndex(f => Distance(newEnemyHead, f.Position) < pickupThreshold);
+            int enemyFoodIndex = foods.FindIndex(f => Distance(newEnemyHead, f.Position) < 1.2f);
             if (enemyFoodIndex != -1) {
                 Food eaten = foods[enemyFoodIndex];
                 if (eaten.IsMagnetic) {
@@ -412,7 +429,6 @@ public class GameForm : Form {
                     enemy.Score += 40;
                     PointF tail = enemy.Segments[enemy.Segments.Count - 1];
                     for (int i = 0; i < 4; i++) enemy.Segments.Add(tail);
-                    // Enemies do not get a head expansion effect.
                 } else if (eaten.IsSpecial) {
                     enemy.Score += 100;
                     PointF tail = enemy.Segments[enemy.Segments.Count - 1];
@@ -427,6 +443,8 @@ public class GameForm : Form {
 
             if (enemy.MagnetTicks > 0) enemy.MagnetTicks--;
         }
+
+
 
         // --- Magnetic Food Attraction ---
         for (int i = 0; i < foods.Count; i++) {
@@ -466,20 +484,32 @@ public class GameForm : Form {
         lastUpdateTime = DateTime.Now;
     }
 
-    // Checks if an enemy’s candidate move avoids collisions.
-    private bool IsEnemyMoveSafe(EnemySnake enemy, PointF newHead) {
-        if (IsOutOfBounds(newHead)) return false;
-        if (enemy.Segments.Count >= 3 && enemy.Segments.Skip(2).Any(p => Distance(p, newHead) < collisionThreshold))
+    private bool IsEnemyMoveSafe(EnemySnake enemy, PointF newHead)
+    {
+        const float playerAvoidanceDistance = 5.0f; // enemy stays at least 5 grid units away from any player segment
+        if (IsOutOfBounds(newHead))
             return false;
-        if (playerSnake.Count >= 2 && playerSnake.Skip(1).Any(p => Distance(p, newHead) < collisionThreshold))
+        // Avoid all parts of the player snake.
+        if (playerSnake.Any(p => Distance(p, newHead) < playerAvoidanceDistance))
             return false;
-        foreach (var other in enemySnakes) {
+        // Check collision with enemy's own body—ignore the head and the tail (last segment)
+        if (enemy.Segments.Count > 2 &&
+            enemy.Segments.Skip(1).Take(enemy.Segments.Count - 2)
+                  .Any(p => Distance(p, newHead) < collisionThreshold))
+            return false;
+        // Avoid colliding with other enemy snakes.
+        foreach (var other in enemySnakes)
+        {
             if (other == enemy) continue;
             if (other.Segments.Any(p => Distance(p, newHead) < collisionThreshold))
                 return false;
         }
         return true;
     }
+
+
+
+
 
     // Respawns an enemy snake.
     private void RespawnEnemy(EnemySnake enemy) {
