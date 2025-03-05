@@ -8,7 +8,7 @@ Pediatric;DxC;PED1,PED2;Thaw&open;7,7;
 EtOH/Ammonia;DxC;EAC1,EAC2,EAC3;Opened;20,20,20;
 Spinal Fluid;DxC;CSF1,CSF2;Opened;30,30;
 Immunology;DxC;IMM1,IMM2,IMM3;Opened;30,30,30;
-Specialty Immunoassay;DxI;SP1,SP2,SP3;Thaw&open;7,7,7;
+Specialty Immunoassay;DxI;SP1,SP2,SP3;Thawed;7,7,7;
 Tumor Marker;DxI;TM1,TM2,TM3;Thaw&open;10,10,10;
 Lyphochek Specialty;DxI;LYSP1,LYPS2,LYSP3;Reconstituted;3,3,3;
 Urine;DxC;UR1,UR2,URMA1,URMA2,URNEG,URPOS,BRS1E,BRS2E;Opened;30,30,90,90,60,30,30,30;
