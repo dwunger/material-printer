@@ -448,15 +448,21 @@ function print_label([Material] $material){
 function Read-Barcode {
     $delimiters = 0
     $barcode = ""
-    
+
     while ($true) {
         $key = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+        
+        # If End key is pressed, signal manual entry by returning $null
+        if ($key.VirtualKeyCode -eq 35) {
+            return $null
+        }
+        
         $barcode += $key.Character
-        if ($key.Character -eq "\") { 
+        if ($key.Character -eq "\") {
             $delimiters += 1
-	}
-        if ($delimiters -gt 1) { 
-            break 
+        }
+        if ($delimiters -gt 1) {
+            break
         }
     }
     
@@ -516,18 +522,17 @@ class ElectrolyteLabels {
         Write-Host $message
         $barcode = Read-Barcode
 
+        if (-not $barcode) {
+            # End key pressed; prompt for manual entry.
+            $lot = Read-Host "Enter Lot number manually"
+            $exp = Read-Host "Enter Expiration date (YYYY-MM-DD) manually"
+            return "$lot $exp"
+        }
+
         $lot = $this.ParseBarcodeLot($barcode)
         $expDate = $this.ParseBarcodeExpiration($barcode)
-        $result = "$lot $expDate"
-        if ($this.DEBUG) {
-            Clear-Host
-            Write-Host "DEBUG: ParseElectrolyteBarcode Input: $barcode"
-            Write-Host "DEBUG: ParseElectrolyteBarcode Output: $result"
-            Read-Host
-        }
-        return $result
+        return "$lot $expDate"
     }
-
 
     [void] SendToPrinter($urinelow_parsed,$urinehigh_parsed,$serumlow_parsed,$serumhigh_parsed) {
 
@@ -568,10 +573,10 @@ class ElectrolyteLabels {
     }
 
     [void] PrintLabels() {
-        $urinelow_parsed = $this.ParseElectrolyteBarcode("Scan Low Urine Barcode and press enter:")
-        $urinehigh_parsed = $this.ParseElectrolyteBarcode("Scan High Urine Barcode and press enter:")
-        $serumlow_parsed = $this.ParseElectrolyteBarcode("Scan Low Serum Barcode and press enter:")
-        $serumhigh_parsed = $this.ParseElectrolyteBarcode("Scan High Serum Barcode and press enter:")
+        $urinelow_parsed = $this.ParseElectrolyteBarcode("Scan Low Urine Barcode and press enter (or press the End key for manual entry):")
+        $urinehigh_parsed = $this.ParseElectrolyteBarcode("Scan High Urine Barcode and press enter (or press the End key for manual entry):")
+        $serumlow_parsed = $this.ParseElectrolyteBarcode("Scan Low Serum Barcode and press enter (or press the End key for manual entry):")
+        $serumhigh_parsed = $this.ParseElectrolyteBarcode("Scan High Serum Barcode and press enter (or press the End key for manual entry):")
     
 
         Clear-Host
