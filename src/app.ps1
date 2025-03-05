@@ -86,7 +86,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "-SP Thaw&Open $RIGHT_ARROW Thawed`n- Added manual entry for`n  ISE calibrators`n- Added BigHead food`n- Removed WebRequest Cache`n- Made WebRequest async`n  to speed up startup `n  routine`n- 's' - Snek Overhaul!`n- Huginn SemVer bug fix"
+$STARTUP_LOGMSG = "- SP Thaw&Open $RIGHT_ARROW Thawed`n- Added manual entry for`n  ISE calibrators`n- Added BigHead food`n- Removed WebRequest Cache`n- Made WebRequest async`n  to speed up startup `n  routine`n- 's' - Snek Overhaul!`n- Huginn SemVer bug fix"
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 
 # Import-Module command with detailed parameter explanation
