@@ -86,7 +86,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- Added BigHead food`n- Removed WebRequest Cache`n- Made WebRequest async`n  to speed up startup `n  routine`n- 's' - Snek Overhaul!`n- Huginn SemVer bug fix"
+$STARTUP_LOGMSG = "- Added manual entry for`n  ISE calibrators`n- Added BigHead food`n- Removed WebRequest Cache`n- Made WebRequest async`n  to speed up startup `n  routine`n- 's' - Snek Overhaul!`n- Huginn SemVer bug fix"
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 
 # Import-Module command with detailed parameter explanation
@@ -573,10 +573,10 @@ class ElectrolyteLabels {
     }
 
     [void] PrintLabels() {
-        $urinelow_parsed = $this.ParseElectrolyteBarcode("Scan Low Urine Barcode and press enter (or press the End key for manual entry):")
-        $urinehigh_parsed = $this.ParseElectrolyteBarcode("Scan High Urine Barcode and press enter (or press the End key for manual entry):")
-        $serumlow_parsed = $this.ParseElectrolyteBarcode("Scan Low Serum Barcode and press enter (or press the End key for manual entry):")
-        $serumhigh_parsed = $this.ParseElectrolyteBarcode("Scan High Serum Barcode and press enter (or press the End key for manual entry):")
+        $urinelow_parsed = $this.ParseElectrolyteBarcode("Scan Low Urine Barcode or press the End key for manual entry:")
+        $urinehigh_parsed = $this.ParseElectrolyteBarcode("Scan High Urine Barcode or press the End key for manual entry:")
+        $serumlow_parsed = $this.ParseElectrolyteBarcode("Scan Low Serum Barcode or press the End key for manual entry:")
+        $serumhigh_parsed = $this.ParseElectrolyteBarcode("Scan High Serum Barcode or press the End key for manual entry:")
     
 
         Clear-Host
