@@ -1,7 +1,6 @@
 $logFile = ".\error_log.txt"
 $sourceCode = Get-Content -Path ".\src\Main.cs" -Raw
-$assemblies = @("System.Drawing.dll", "System.Windows.Forms.dll")
-
+$assemblies = @("System.Drawing.dll", "System.Windows.Forms.dll", "System.Net.Http.dll")
 try {
     $assembly = Add-Type -TypeDefinition $sourceCode -Language CSharp -ReferencedAssemblies $assemblies -PassThru
     if ($assembly) {
