@@ -1,22 +1,229 @@
 using System;
-using System.Collections.Generic;
+using System.Net;
+using System.IO;
+using System.Text;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
+using System.Collections.Generic;
 using System.Windows.Forms;
+
+//
+// LeaderboardService: Handles score submission and leaderboard retrieval.
+//
+public class LeaderboardService
+{
+    private static readonly string WebAppUrl = "https://script.google.com/macros/s/AKfycbxwmLIqa4sWv1Q7Y9f9s17BALS_dGv1wKt9TaP3s6FoM_kvQ4T0MJoxSrmnRdaS7E2nLQ/exec";
+
+    public static bool SubmitScore(string username, int score)
+    {
+        try
+        {
+            string postData = "{\"name\":\"" + username + "\", \"score\":" + score + "}";
+
+            byte[] dataBytes = Encoding.UTF8.GetBytes(postData);
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(WebAppUrl + "?action=submit");
+            request.Method = "POST";
+            request.ContentType = "application/json";
+            request.ContentLength = dataBytes.Length;
+
+            using (Stream requestStream = request.GetRequestStream())
+            {
+                requestStream.Write(dataBytes, 0, dataBytes.Length);
+            }
+
+            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+            {
+                using (StreamReader reader = new StreamReader(response.GetResponseStream()))
+                {
+                    string result = reader.ReadToEnd();
+                    return response.StatusCode == HttpStatusCode.OK && result.Contains("Success");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Error submitting score: " + ex.Message);
+            return false;
+        }
+    }
+
+    public static string GetLeaderboard()
+    {
+        try
+        {
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(WebAppUrl + "?action=leaderboard");
+            request.Method = "GET";
+
+            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+            {
+                using (StreamReader reader = new StreamReader(response.GetResponseStream()))
+                {
+                    string result = reader.ReadToEnd();
+                    return result;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            return "Error fetching leaderboard: " + ex.Message;
+        }
+    }
+}
+
+//
+// LeaderboardEntry: Represents a single leaderboard record.
+//
+public class LeaderboardEntry
+{
+    public string Username { get; set; }
+    public int Score { get; set; }
+    public DateTime Timestamp { get; set; }
+}
+
+//
+// LeaderboardDisplayForm: Displays the leaderboard in a DataGridView.
+// The ParseLeaderboardData method manually parses a JSON array of arrays.
+// Expected format: [["DangerNoodle",40,"2025-03-08T07:18:41.488Z"],["DeezNoodles",20,"2025-03-08T07:19:28.400Z"]]
+//
+public class LeaderboardDisplayForm : Form
+{
+    public LeaderboardDisplayForm(string leaderboardData)
+    {
+        this.Text = "Leaderboard";
+        this.ClientSize = new Size(400, 300);
+        this.StartPosition = FormStartPosition.CenterScreen;
+        this.FormBorderStyle = FormBorderStyle.FixedDialog;
+        this.MaximizeBox = false;
+
+        DataGridView grid = new DataGridView();
+        grid.Dock = DockStyle.Fill;
+        grid.ReadOnly = true;
+        grid.AllowUserToAddRows = false;
+        grid.AllowUserToDeleteRows = false;
+        grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+
+        List<LeaderboardEntry> entries = ParseLeaderboardData(leaderboardData);
+        grid.DataSource = entries;
+        this.Controls.Add(grid);
+
+        Button closeButton = new Button();
+        closeButton.Text = "Close";
+        closeButton.Dock = DockStyle.Bottom;
+        closeButton.Height = 30;
+        closeButton.Click += new EventHandler((s, e) => { this.Close(); });
+        this.Controls.Add(closeButton);
+    }
+
+    private List<LeaderboardEntry> ParseLeaderboardData(string json)
+    {
+        List<LeaderboardEntry> entries = new List<LeaderboardEntry>();
+        json = json.Trim();
+        if (json.StartsWith("[") && json.EndsWith("]"))
+        {
+            // Remove the outer brackets.
+            json = json.Substring(1, json.Length - 2);
+            // Split by "],[" since the inner arrays are separated by that.
+            string[] parts = json.Split(new string[] { "],[" }, StringSplitOptions.None);
+            foreach (var part in parts)
+            {
+                // Remove any stray brackets.
+                string clean = part.Replace("[", "").Replace("]", "");
+                // Now expect: "DangerNoodle",40,"2025-03-08T07:18:41.488Z"
+                string[] items = clean.Split(',');
+                if (items.Length >= 3)
+                {
+                    string username = items[0].Trim(' ', '"');
+                    int score = int.Parse(items[1]);
+                    DateTime timestamp = DateTime.Parse(items[2].Trim(' ', '"'));
+                    entries.Add(new LeaderboardEntry { Username = username, Score = score, Timestamp = timestamp });
+                }
+            }
+        }
+        return entries;
+    }
+}
+
+//
+// UsernamePromptForm: Prompts the player for their username.
+//
+public class UsernamePromptForm : Form
+{
+    private TextBox usernameTextBox;
+    private Button okButton;
+    private Button cancelButton;
+    private Label promptLabel;
+
+    public string Username
+    {
+        get { return usernameTextBox.Text; }
+    }
+
+    public UsernamePromptForm()
+    {
+        this.Text = "Enter Username";
+        this.ClientSize = new Size(300, 120);
+        this.FormBorderStyle = FormBorderStyle.FixedDialog;
+        this.StartPosition = FormStartPosition.CenterScreen;
+        this.MaximizeBox = false;
+        this.MinimizeBox = false;
+
+        promptLabel = new Label();
+        promptLabel.Text = "Please enter your username:";
+        promptLabel.Location = new Point(10, 10);
+        promptLabel.Size = new Size(280, 20);
+        this.Controls.Add(promptLabel);
+
+        usernameTextBox = new TextBox();
+        usernameTextBox.Location = new Point(10, 35);
+        usernameTextBox.Size = new Size(280, 20);
+        this.Controls.Add(usernameTextBox);
+
+        okButton = new Button();
+        okButton.Text = "OK";
+        okButton.Location = new Point(135, 70);
+        okButton.Click += new EventHandler(okButton_Click);
+        this.Controls.Add(okButton);
+
+        cancelButton = new Button();
+        cancelButton.Text = "Cancel";
+        cancelButton.Location = new Point(215, 70);
+        cancelButton.Click += new EventHandler(cancelButton_Click);
+        this.Controls.Add(cancelButton);
+    }
+
+    private void okButton_Click(object sender, EventArgs e)
+    {
+        if (usernameTextBox.Text.Trim() == "")
+        {
+            MessageBox.Show("Username cannot be empty.");
+            return;
+        }
+        this.DialogResult = DialogResult.OK;
+        this.Close();
+    }
+
+    private void cancelButton_Click(object sender, EventArgs e)
+    {
+        this.DialogResult = DialogResult.Cancel;
+        this.Close();
+    }
+}
 
 //
 // MainMenuForm: The startup screen with instructions, changelog, and start button.
 //
-public class MainMenuForm : Form {
-    public MainMenuForm() {
-        this.Text = "Snek Menu - Version 1.1.1";
+public class MainMenuForm : Form
+{
+    public MainMenuForm()
+    {
+        this.Text = "Snek Menu - Version 1.1.2";
         this.ClientSize = new Size(600, 400);
         this.StartPosition = FormStartPosition.CenterScreen;
         this.FormBorderStyle = FormBorderStyle.FixedSingle;
         this.MaximizeBox = false;
 
-        // Instructions Label
         Label instructionsLabel = new Label();
         instructionsLabel.Text = "Controls:\n" +
             "- Move snake with mouse (WASD/Arrow keys override).\n" +
@@ -27,15 +234,14 @@ public class MainMenuForm : Form {
         instructionsLabel.Font = new Font("Arial", 10);
         instructionsLabel.AutoSize = false;
 
-        // Changelog side pane with updated log
         GroupBox changelogBox = new GroupBox();
         changelogBox.Text = "Changelog";
         changelogBox.Location = new Point(320, 20);
         changelogBox.Size = new Size(250, 300);
         Label changelogLabel = new Label();
-        changelogLabel.Text = "Version 1.1.1:\n" +
+        changelogLabel.Text = "Version 1.1.2:\n" +
             "- Randomized normal food color and added transparency.\n" +
-            "- Added new special food: BigHead. I haven't decided on its effect yet.";
+            "- Added leaderboard!";
         changelogLabel.Location = new Point(10, 20);
         changelogLabel.Size = new Size(230, 270);
         changelogLabel.Font = new Font("Arial", 9);
@@ -43,7 +249,6 @@ public class MainMenuForm : Form {
         changelogLabel.TextAlign = ContentAlignment.TopLeft;
         changelogBox.Controls.Add(changelogLabel);
 
-        // Start Button
         Button startButton = new Button();
         startButton.Text = "Start Game";
         startButton.Location = new Point(250, 350);
@@ -61,42 +266,22 @@ public class MainMenuForm : Form {
     }
 }
 
-
-public struct CandidateMove {
-    public float VX;
-    public float VY;
-    public float Dist;
-    public CandidateMove(float vx, float vy, float dist) {
-        this.VX = vx;
-        this.VY = vy;
-        this.Dist = dist;
-    }
-}
-
-
 //
 // GameForm: The main game with circular boundary, camera tracking, multiple enemy snakes, and a rolling death log overlay.
 //
-public class GameForm : Form {
+public class GameForm : Form
+{
     Timer logicTimer;
     Timer renderTimer;
     List<PointF> playerSnake;
     List<PointF> prevPlayerSnake;
-
-    // Multiple enemy snakes
     List<EnemySnake> enemySnakes;
-
     Dictionary<int, PointF> prevFoodPositions = new Dictionary<int, PointF>();
     List<Food> foods = new List<Food>();
     int cellSize = 10, cols = 40, rows = 40;
-
-    // Map boundary (circular) variables – center is player's start
     PointF mapCenter;
     float mapRadius;
-
-    // Movement vector for player
     float playerVX = 1f, playerVY = 0f;
-
     int playerScore = 0;
     Random rand = new Random();
     float animationPhase = 0f;
@@ -104,32 +289,21 @@ public class GameForm : Form {
     bool gameStarted = false;
     bool keyboardOverride = false;
     Point currentMousePosition;
-
-    // Boosting flag
     bool isBoosting = false;
     float baseSpeed = 1.0f;
-
     float glowIntensity = 1.0f;
     float rainbowPhase = 0f;
     const float RAINBOW_SPEED = 0.05f;
-
     DateTime lastUpdateTime;
-
     int playerMagnetTicks = 0;
     int superFoodTicks = 0;
-    int bigHeadTicks = 0; // Ticks remaining for BigHead effect
-
-    // Collision threshold (in grid units)
+    int bigHeadTicks = 0;
     const float collisionThreshold = 0.7f;
-
-    // Global toggle for death log overlay.
     private bool deathLogEnabled = true;
-    // Rolling log (max 5 events)
     private List<string> deathLog = new List<string>();
 
-    // Food struct using float positions.
-    // Added IsBigHead flag to distinguish BigHead food.
-    private struct Food {
+    private struct Food
+    {
         public int Id;
         public PointF Position;
         public bool IsSpecial;
@@ -139,8 +313,8 @@ public class GameForm : Form {
     }
     int nextFoodId = 0;
 
-    // Enemy snake class encapsulating segments, velocity, color, and name tag.
-    private class EnemySnake {
+    private class EnemySnake
+    {
         public List<PointF> Segments;
         public List<PointF> PrevSegments;
         public float VX, VY;
@@ -149,7 +323,8 @@ public class GameForm : Form {
         public int MagnetTicks;
         public int Score;
 
-        public EnemySnake(PointF spawn, Color baseColor, string name) {
+        public EnemySnake(PointF spawn, Color baseColor, string name)
+        {
             Segments = new List<PointF> { spawn };
             PrevSegments = new List<PointF> { spawn };
             VX = 1f;
@@ -161,27 +336,20 @@ public class GameForm : Form {
         }
     }
 
-    public GameForm() {
-        // The visible area is defined by cols x rows.
+    public GameForm()
+    {
         this.ClientSize = new Size(cols * cellSize, rows * cellSize + 40);
         this.DoubleBuffered = true;
         this.Text = "Snek - Version 1.1.0";
         this.KeyPreview = true;
-
-        // Set up the circular map – center at player's start and radius ~ 3x visible grid.
         mapCenter = new PointF(cols / 2f, rows / 2f);
-        mapRadius = Math.Max(cols, rows) * 1.5f; // For cols=40, radius=60
-
-        // Initialize player snake at center.
+        mapRadius = Math.Max(cols, rows) * 1.5f;
         playerSnake = new List<PointF> { new PointF(cols / 2f, rows / 2f) };
         prevPlayerSnake = playerSnake.Select(p => new PointF(p.X, p.Y)).ToList();
-
-        // Initialize multiple enemy snakes with distinct colors and name tags.
         enemySnakes = new List<EnemySnake>();
         enemySnakes.Add(new EnemySnake(GenerateRandomPositionInMap(), Color.Blue, "Blue Bomber"));
         enemySnakes.Add(new EnemySnake(GenerateRandomPositionInMap(), Color.Purple, "Violet Viper"));
         enemySnakes.Add(new EnemySnake(GenerateRandomPositionInMap(), Color.Orange, "Orange Obliterator"));
-
         GenerateFoods();
 
         logicTimer = new Timer { Interval = 100 };
@@ -189,11 +357,12 @@ public class GameForm : Form {
         renderTimer = new Timer { Interval = 16 };
         renderTimer.Tick += (s, e) => Invalidate();
 
-        this.MouseDown += (s, e) => { 
-            keyboardOverride = false; 
-            if (e.Button == MouseButtons.Left) 
-                isBoosting = true; 
-            if (!gameStarted && e.Button == MouseButtons.Left) {
+        this.MouseDown += (s, e) => {
+            keyboardOverride = false;
+            if (e.Button == MouseButtons.Left)
+                isBoosting = true;
+            if (!gameStarted && e.Button == MouseButtons.Left)
+            {
                 gameStarted = true;
                 lastUpdateTime = DateTime.Now;
                 logicTimer.Start();
@@ -206,30 +375,35 @@ public class GameForm : Form {
         this.KeyUp += (s, e) => { if (e.KeyCode == Keys.Space) isBoosting = false; };
     }
 
-    private void AddDeathLog(string message) {
+    private void AddDeathLog(string message)
+    {
         if (!deathLogEnabled) return;
         if (deathLog.Count >= 5)
             deathLog.RemoveAt(0);
         deathLog.Add(message);
     }
 
-    private PointF Lerp(PointF a, PointF b, float t) {
+    private PointF Lerp(PointF a, PointF b, float t)
+    {
         return new PointF(a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t);
     }
 
-    private float Distance(PointF a, PointF b) {
+    private float Distance(PointF a, PointF b)
+    {
         float dx = a.X - b.X, dy = a.Y - b.Y;
         return (float)Math.Sqrt(dx * dx + dy * dy);
     }
 
-    private GraphicsPath CreateGlowPath(PointF center, float radius, float glowSize) {
+    private GraphicsPath CreateGlowPath(PointF center, float radius, float glowSize)
+    {
         GraphicsPath path = new GraphicsPath();
         for (float size = radius; size <= radius + glowSize; size += glowSize / 4)
             path.AddEllipse(center.X - size, center.Y - size, size * 2, size * 2);
         return path;
     }
 
-    private Color GetRainbowColor(float phase) {
+    private Color GetRainbowColor(float phase)
+    {
         float frequency = 2.0f * (float)Math.PI;
         int r = (int)(Math.Sin(frequency * phase + 0) * 127 + 128);
         int g = (int)(Math.Sin(frequency * phase + 2) * 127 + 128);
@@ -237,14 +411,16 @@ public class GameForm : Form {
         return Color.FromArgb(r, g, b);
     }
 
-    private void DrawShinyEye(Graphics g, PointF center, float eyeRadius, float pupilRadius) {
+    private void DrawShinyEye(Graphics g, PointF center, float eyeRadius, float pupilRadius)
+    {
         RectangleF eyeRect = new RectangleF(center.X - eyeRadius, center.Y - eyeRadius, eyeRadius * 2, eyeRadius * 2);
         g.FillEllipse(Brushes.White, eyeRect);
         using (PathGradientBrush shine = new PathGradientBrush(new PointF[] {
             new PointF(center.X - eyeRadius * 0.7f, center.Y - eyeRadius * 0.7f),
             new PointF(center.X + eyeRadius * 0.7f, center.Y - eyeRadius * 0.7f),
             new PointF(center.X, center.Y + eyeRadius * 0.7f)
-        })) {
+        }))
+        {
             shine.CenterColor = Color.FromArgb(150, 255, 255, 255);
             shine.SurroundColors = new Color[] { Color.FromArgb(0, 255, 255, 255) };
             g.FillEllipse(shine, eyeRect);
@@ -255,40 +431,46 @@ public class GameForm : Form {
             new PointF(center.X + pupilRadius, center.Y - pupilRadius),
             new PointF(center.X + pupilRadius, center.Y + pupilRadius),
             new PointF(center.X - pupilRadius, center.Y + pupilRadius)
-        })) {
+        }))
+        {
             pupilBrush.CenterColor = Color.Black;
             pupilBrush.SurroundColors = new Color[] { Color.FromArgb(255, 40, 40, 40) };
             g.FillEllipse(pupilBrush, pupilRect);
         }
     }
 
-    private void GameForm_KeyDown(object sender, KeyEventArgs e) {
+    private void GameForm_KeyDown(object sender, KeyEventArgs e)
+    {
         keyboardOverride = true;
-        switch (e.KeyCode) {
-            case Keys.Up:
-            case Keys.W:
-                playerVX = 0; playerVY = -1; break;
-            case Keys.Down:
-            case Keys.S:
-                playerVX = 0; playerVY = 1; break;
-            case Keys.Left:
-            case Keys.A:
-                playerVX = -1; playerVY = 0; break;
-            case Keys.Right:
-            case Keys.D:
-                playerVX = 1; playerVY = 0; break;
-            case Keys.Space:
-                isBoosting = true; break;
+        if (e.KeyCode == Keys.Up || e.KeyCode == Keys.W)
+        {
+            playerVX = 0; playerVY = -1;
+        }
+        else if (e.KeyCode == Keys.Down || e.KeyCode == Keys.S)
+        {
+            playerVX = 0; playerVY = 1;
+        }
+        else if (e.KeyCode == Keys.Left || e.KeyCode == Keys.A)
+        {
+            playerVX = -1; playerVY = 0;
+        }
+        else if (e.KeyCode == Keys.Right || e.KeyCode == Keys.D)
+        {
+            playerVX = 1; playerVY = 0;
+        }
+        else if (e.KeyCode == Keys.Space)
+        {
+            isBoosting = true;
         }
     }
 
-    // Determines if a point is outside the circular map boundary.
-    bool IsOutOfBounds(PointF p) {
+    bool IsOutOfBounds(PointF p)
+    {
         return Distance(p, mapCenter) > mapRadius;
     }
 
-    // Generates a random position within the circular map.
-    private PointF GenerateRandomPositionInMap() {
+    private PointF GenerateRandomPositionInMap()
+    {
         double angle = rand.NextDouble() * 2 * Math.PI;
         double r = Math.Sqrt(rand.NextDouble()) * mapRadius;
         float x = (float)(mapCenter.X + r * Math.Cos(angle));
@@ -296,14 +478,13 @@ public class GameForm : Form {
         return new PointF(x, y);
     }
 
-    // Update game logic.
-    void UpdateGame() {
+    void UpdateGame()
+    {
         float pickupThreshold = 1.2f;
-
         prevPlayerSnake = playerSnake.Select(p => new PointF(p.X, p.Y)).ToList();
         foreach (var enemy in enemySnakes)
             enemy.PrevSegments = enemy.Segments.Select(p => new PointF(p.X, p.Y)).ToList();
-        var newPrevFoodPositions = new Dictionary<int, PointF>();
+        Dictionary<int, PointF> newPrevFoodPositions = new Dictionary<int, PointF>();
         foreach (var food in foods)
             newPrevFoodPositions[food.Id] = food.Position;
         prevFoodPositions = newPrevFoodPositions;
@@ -317,21 +498,26 @@ public class GameForm : Form {
         // --- Player Update ---
         PointF head = playerSnake[0];
         float candidateVX, candidateVY;
-        if (!keyboardOverride) {
-            // Translate mouse position into world coordinates relative to player head.
+        if (!keyboardOverride)
+        {
             float targetX = currentMousePosition.X / (float)cellSize + (head.X - (ClientSize.Width / (2f * cellSize)));
             float targetY = currentMousePosition.Y / (float)cellSize + (head.Y - (ClientSize.Height / (2f * cellSize)));
             float diffX = targetX - head.X;
             float diffY = targetY - head.Y;
             float len = (float)Math.Sqrt(diffX * diffX + diffY * diffY);
-            if (len > 0.0001f) {
+            if (len > 0.0001f)
+            {
                 candidateVX = diffX / len;
                 candidateVY = diffY / len;
-            } else {
+            }
+            else
+            {
                 candidateVX = playerVX;
                 candidateVY = playerVY;
             }
-        } else {
+        }
+        else
+        {
             candidateVX = playerVX;
             candidateVY = playerVY;
         }
@@ -340,50 +526,60 @@ public class GameForm : Form {
         float boostMult = (isBoosting && playerSnake.Count > 1) ? 1.5f : 1.0f;
         PointF newHead = new PointF(head.X + playerVX * baseSpeed * boostMult, head.Y + playerVY * baseSpeed * boostMult);
 
-        // Removed self-collision detection for the player.
         if (IsOutOfBounds(newHead) ||
-            enemySnakes.Any(enemy => enemy.Segments.Skip(1).Any(p => Distance(p, newHead) < collisionThreshold))) {
-
-            // Log player's death event.
-            if (deathLogEnabled) {
+            enemySnakes.Any(enemy => enemy.Segments.Skip(1).Any(p => Distance(p, newHead) < collisionThreshold)))
+        {
+            if (deathLogEnabled)
+            {
                 if (IsOutOfBounds(newHead))
                     AddDeathLog("Player went out of bounds.");
-                else {
+                else
+                {
                     EnemySnake killer = enemySnakes.First(e => e.Segments.Skip(1).Any(p => Distance(p, newHead) < collisionThreshold));
-                    AddDeathLog(string.Format("{0} killed Player.", killer.Name));
+                    AddDeathLog(killer.Name + " killed Player.");
                 }
             }
 
             logicTimer.Stop();
             renderTimer.Stop();
             MessageBox.Show("Game Over! Your Score: " + playerScore);
-            Application.Exit();
+            ShowLeaderboard();
             return;
         }
         playerSnake.Insert(0, newHead);
-        int foodIndex = foods.FindIndex(f => Distance(newHead, f.Position) < pickupThreshold * (bigHeadTicks > 0 ? 5 : 1));
-        if (foodIndex != -1) {
+        int foodIndex = foods.FindIndex(f => Distance(newHead, f.Position) < pickupThreshold * ((bigHeadTicks > 0) ? 5 : 1));
+        if (foodIndex != -1)
+        {
             Food eaten = foods[foodIndex];
-            if (eaten.IsMagnetic) {
-                playerScore += 20;
+            if (eaten.IsMagnetic)
+            {
+                playerScore = playerScore + 20;
                 PointF tail = playerSnake[playerSnake.Count - 1];
                 for (int i = 0; i < 3; i++) playerSnake.Add(tail);
                 playerMagnetTicks = 20;
-            } else if (eaten.IsBigHead) {
-                playerScore += 40;
+            }
+            else if (eaten.IsBigHead)
+            {
+                playerScore = playerScore + 40;
                 PointF tail = playerSnake[playerSnake.Count - 1];
                 for (int i = 0; i < 4; i++) playerSnake.Add(tail);
                 bigHeadTicks = 150;
-            } else if (eaten.IsSpecial) {
-                playerScore += 100;
+            }
+            else if (eaten.IsSpecial)
+            {
+                playerScore = playerScore + 100;
                 PointF tail = playerSnake[playerSnake.Count - 1];
                 for (int i = 0; i < 30; i++) playerSnake.Add(tail);
                 superFoodTicks = 100;
-            } else {
-                playerScore += 10;
+            }
+            else
+            {
+                playerScore = playerScore + 10;
             }
             foods.RemoveAt(foodIndex);
-        } else {
+        }
+        else
+        {
             playerSnake.RemoveAt(playerSnake.Count - 1);
         }
         if (isBoosting && playerSnake.Count > 1)
@@ -392,12 +588,15 @@ public class GameForm : Form {
         // --- Enemy Update ---
         if (foods.Count == 0) GenerateFoods();
 
-        foreach (var enemy in enemySnakes) {
+        foreach (var enemy in enemySnakes)
+        {
             PointF enemyHead = enemy.Segments[0];
-            if (!foods.Any()) { GenerateFoods(); }
+            if (!foods.Any())
+            {
+                GenerateFoods();
+            }
             if (!foods.Any()) continue;
 
-            // Target the closest food.
             Food targetFood = foods.OrderBy(f => Distance(f.Position, enemyHead)).First();
             float diffEx = targetFood.Position.X - enemyHead.X;
             float diffEy = targetFood.Position.Y - enemyHead.Y;
@@ -405,64 +604,74 @@ public class GameForm : Form {
             float desiredVX = (lenE > 0.0001f) ? diffEx / lenE : enemy.VX;
             float desiredVY = (lenE > 0.0001f) ? diffEy / lenE : enemy.VY;
 
-            // Generate candidate moves from several angle offsets.
             List<CandidateMove> candidates = new List<CandidateMove>();
             float baseAngle = (float)Math.Atan2(desiredVY, desiredVX);
             float[] angleOffsets = new float[] { 0, 15, -15, 30, -30, 45, -45 };
-            foreach (var offset in angleOffsets) {
+            foreach (var offset in angleOffsets)
+            {
                 float radOffset = offset * (float)Math.PI / 180f;
                 float testAngle = baseAngle + radOffset;
                 float testVX = (float)Math.Cos(testAngle);
                 float testVY = (float)Math.Sin(testAngle);
                 PointF testHead = new PointF(enemyHead.X + testVX * baseSpeed, enemyHead.Y + testVY * baseSpeed);
-                if (IsEnemyMoveSafe(enemy, testHead)) {
-                    // Instead of checking just against the player's head, use the entire player snake.
+                if (IsEnemyMoveSafe(enemy, testHead))
+                {
                     float minDistToPlayer = playerSnake.Min(p => Distance(p, testHead));
                     candidates.Add(new CandidateMove(testVX, testVY, minDistToPlayer));
                 }
             }
 
-            if (candidates.Count == 0) {
-                // Log enemy death event.
-                AddDeathLog(string.Format("Player killed {0}.", enemy.Name));
+            if (candidates.Count == 0)
+            {
+                AddDeathLog("Player killed " + enemy.Name + ".");
                 RespawnEnemy(enemy);
                 continue;
             }
 
-            // Choose the candidate that maximizes the distance from the player's snake.
             CandidateMove best = candidates.OrderByDescending(c => c.Dist).First();
             enemy.VX = best.VX;
             enemy.VY = best.VY;
 
             PointF newEnemyHead = new PointF(enemyHead.X + enemy.VX * baseSpeed, enemyHead.Y + enemy.VY * baseSpeed);
-            if (!IsEnemyMoveSafe(enemy, newEnemyHead)) {
-                AddDeathLog(string.Format("Player killed {0}.", enemy.Name));
+            if (!IsEnemyMoveSafe(enemy, newEnemyHead))
+            {
+                AddDeathLog("Player killed " + enemy.Name + ".");
                 RespawnEnemy(enemy);
                 continue;
             }
             enemy.Segments.Insert(0, newEnemyHead);
 
             int enemyFoodIndex = foods.FindIndex(f => Distance(newEnemyHead, f.Position) < 1.2f);
-            if (enemyFoodIndex != -1) {
+            if (enemyFoodIndex != -1)
+            {
                 Food eaten = foods[enemyFoodIndex];
-                if (eaten.IsMagnetic) {
-                    enemy.Score += 20;
+                if (eaten.IsMagnetic)
+                {
+                    enemy.Score = enemy.Score + 20;
                     PointF tail = enemy.Segments[enemy.Segments.Count - 1];
                     for (int i = 0; i < 3; i++) enemy.Segments.Add(tail);
                     enemy.MagnetTicks = 20;
-                } else if (eaten.IsBigHead) {
-                    enemy.Score += 40;
+                }
+                else if (eaten.IsBigHead)
+                {
+                    enemy.Score = enemy.Score + 40;
                     PointF tail = enemy.Segments[enemy.Segments.Count - 1];
                     for (int i = 0; i < 4; i++) enemy.Segments.Add(tail);
-                } else if (eaten.IsSpecial) {
-                    enemy.Score += 100;
+                }
+                else if (eaten.IsSpecial)
+                {
+                    enemy.Score = enemy.Score + 100;
                     PointF tail = enemy.Segments[enemy.Segments.Count - 1];
                     for (int i = 0; i < 10; i++) enemy.Segments.Add(tail);
-                } else {
-                    enemy.Score += 10;
+                }
+                else
+                {
+                    enemy.Score = enemy.Score + 10;
                 }
                 foods.RemoveAt(enemyFoodIndex);
-            } else {
+            }
+            else
+            {
                 enemy.Segments.RemoveAt(enemy.Segments.Count - 1);
             }
 
@@ -470,20 +679,26 @@ public class GameForm : Form {
         }
 
         // --- Magnetic Food Attraction ---
-        for (int i = 0; i < foods.Count; i++) {
+        for (int i = 0; i < foods.Count; i++)
+        {
             bool playerActive = playerMagnetTicks > 0;
             bool enemyActive = enemySnakes.Any(e => e.MagnetTicks > 0);
             if (!playerActive && !enemyActive)
                 continue;
             PointF target;
-            if (playerActive && enemyActive) {
+            if (playerActive && enemyActive)
+            {
                 float playerDist = Distance(foods[i].Position, playerSnake[0]);
                 var activeEnemies = enemySnakes.Where(e => e.MagnetTicks > 0).ToList();
-                float enemyDist = activeEnemies.Min(e => Distance(foods[i].Position, e.Segments[0]));
+                float enemyDist = activeEnemies.Min(e => Distance(e.Segments[0], foods[i].Position));
                 target = (playerDist <= enemyDist) ? playerSnake[0] : activeEnemies.First(e => Distance(e.Segments[0], foods[i].Position) == enemyDist).Segments[0];
-            } else if (playerActive) {
+            }
+            else if (playerActive)
+            {
                 target = playerSnake[0];
-            } else {
+            }
+            else
+            {
                 target = enemySnakes.First(e => e.MagnetTicks > 0).Segments[0];
             }
 
@@ -491,7 +706,8 @@ public class GameForm : Form {
             float diffX = target.X - foods[i].Position.X;
             float diffY = target.Y - foods[i].Position.Y;
             float dist = (float)Math.Sqrt(diffX * diffX + diffY * diffY);
-            if (dist > 0.0001f) {
+            if (dist > 0.0001f)
+            {
                 diffX = attractionSpeed * diffX / dist;
                 diffY = attractionSpeed * diffY / dist;
             }
@@ -509,10 +725,9 @@ public class GameForm : Form {
 
     private bool IsEnemyMoveSafe(EnemySnake enemy, PointF newHead)
     {
-        const float playerAvoidanceDistance = 1.0f; // adjusted threshold
+        const float playerAvoidanceDistance = 1.0f;
         if (IsOutOfBounds(newHead))
             return false;
-        // Check against all segments of the player's snake:
         if (playerSnake.Any(p => Distance(p, newHead) < playerAvoidanceDistance))
             return false;
         foreach (var other in enemySnakes)
@@ -524,51 +739,60 @@ public class GameForm : Form {
         return true;
     }
 
-
-    // Respawns an enemy snake.
-    private void RespawnEnemy(EnemySnake enemy) {
+    private void RespawnEnemy(EnemySnake enemy)
+    {
         enemy.Segments.Clear();
         PointF p;
-        do {
+        do
+        {
             p = GenerateRandomPositionInMap();
-        } while (playerSnake.Any(q => Distance(q, p) < 0.5f) || foods.Any(f => Distance(f.Position, p) < 0.5f));
+        }
+        while (playerSnake.Any(q => Distance(q, p) < 0.5f) || foods.Any(f => Distance(f.Position, p) < 0.5f));
         enemy.Segments.Add(p);
-        enemy.Score /= 2;
+        enemy.Score = enemy.Score / 2;
         enemy.VX = 1f; enemy.VY = 0f;
         enemy.MagnetTicks = 0;
     }
 
-    // Generates food at random positions.
-    void GenerateFoods() {
-        int count = 10; 
-        for (int i = 0; i < count; i++) {
+    void GenerateFoods()
+    {
+        int count = 10;
+        for (int i = 0; i < count; i++)
+        {
             Food newFood;
-            do {
+            do
+            {
                 newFood.Position = GenerateRandomPositionInMap();
-            } while (playerSnake.Any(p => Distance(p, newFood.Position) < 0.5f) ||
-                     enemySnakes.Any(e => e.Segments.Any(p => Distance(p, newFood.Position) < 0.5f)) ||
-                     foods.Any(f => Distance(f.Position, newFood.Position) < 0.5f));
+            }
+            while (playerSnake.Any(p => Distance(p, newFood.Position) < 0.5f) ||
+                   enemySnakes.Any(e => e.Segments.Any(p => Distance(p, newFood.Position) < 0.5f)) ||
+                   foods.Any(f => Distance(f.Position, newFood.Position) < 0.5f));
             double bigHeadChance = 0.020;
             double magneticChance = 0.015;
             double specialChance = 0.075;
-            if (rand.NextDouble() < bigHeadChance) {
+            if (rand.NextDouble() < bigHeadChance)
+            {
                 newFood.IsBigHead = true;
                 newFood.IsSpecial = false;
                 newFood.IsMagnetic = false;
                 newFood.FoodColor = Color.Empty;
             }
-            else if (rand.NextDouble() < magneticChance) {
+            else if (rand.NextDouble() < magneticChance)
+            {
                 newFood.IsMagnetic = true;
                 newFood.IsSpecial = false;
                 newFood.IsBigHead = false;
                 newFood.FoodColor = Color.Red;
             }
-            else if (rand.NextDouble() < specialChance) {
+            else if (rand.NextDouble() < specialChance)
+            {
                 newFood.IsSpecial = true;
                 newFood.IsMagnetic = false;
                 newFood.IsBigHead = false;
                 newFood.FoodColor = Color.Empty;
-            } else {
+            }
+            else
+            {
                 newFood.IsSpecial = false;
                 newFood.IsMagnetic = false;
                 newFood.IsBigHead = false;
@@ -579,20 +803,21 @@ public class GameForm : Form {
         }
     }
 
-    // Interpolates between two colors.
-    Color InterpolateColor(Color start, Color end, float t) {
+    Color InterpolateColor(Color start, Color end, float t)
+    {
         int r = (int)(start.R + (end.R - start.R) * t);
         int g = (int)(start.G + (end.G - start.G) * t);
         int b = (int)(start.B + (end.B - start.B) * t);
         return Color.FromArgb(r, g, b);
     }
 
-    // Draws a snake with interpolation.
-    void DrawSnakeInterpolated(Graphics g, List<PointF> prevSnake, List<PointF> snake, Color baseColor, bool isPlayer, float alpha) {
+    void DrawSnakeInterpolated(Graphics g, List<PointF> prevSnake, List<PointF> snake, Color baseColor, bool isPlayer, float alpha)
+    {
         if (snake == null || snake.Count == 0) return;
         List<PointF> interp = new List<PointF>();
-        for (int i = 0; i < snake.Count; i++) {
-            PointF from = i < prevSnake.Count ? prevSnake[i] : snake[i];
+        for (int i = 0; i < snake.Count; i++)
+        {
+            PointF from = (i < prevSnake.Count) ? prevSnake[i] : snake[i];
             PointF to = snake[i];
             interp.Add(Lerp(from, to, alpha));
         }
@@ -600,11 +825,12 @@ public class GameForm : Form {
         float tailRadius = cellSize * 0.4f;
         Color headColor = (isPlayer && superFoodTicks > 0) ? GetRainbowColor(rainbowPhase) : (isPlayer ? playerBaseColor : baseColor);
         Color tailColor = (isPlayer && superFoodTicks > 0) ? GetRainbowColor(rainbowPhase + 0.3f) : (isPlayer ? ControlPaint.Dark(playerBaseColor) : ControlPaint.Dark(baseColor));
-        for (int i = 0; i < snake.Count; i++) {
-            float t = snake.Count > 1 ? (float)i / (snake.Count - 1) : 0f;
+        for (int i = 0; i < snake.Count; i++)
+        {
+            float t = (snake.Count > 1) ? (float)i / (snake.Count - 1) : 0f;
             float radius = headRadius * (1 - t) + tailRadius * t;
-            // Apply BigHead effect to the player's head.
-            if (isPlayer && i == 0 && bigHeadTicks > 0) {
+            if (isPlayer && i == 0 && bigHeadTicks > 0)
+            {
                 float elapsed = 150 - bigHeadTicks;
                 float tNorm = elapsed / 150f;
                 float scale = 1 + 4 * (float)Math.Sin(Math.PI * tNorm);
@@ -613,9 +839,11 @@ public class GameForm : Form {
             Color nodeColor = InterpolateColor(headColor, tailColor, t);
             float cx = interp[i].X * cellSize + cellSize / 2f;
             float cy = interp[i].Y * cellSize + cellSize / 2f;
-            if (isPlayer) {
+            if (isPlayer)
+            {
                 using (GraphicsPath glowPath = CreateGlowPath(new PointF(cx, cy), radius, radius * 1.5f))
-                using (PathGradientBrush glowBrush = new PathGradientBrush(glowPath)) {
+                using (PathGradientBrush glowBrush = new PathGradientBrush(glowPath))
+                {
                     Color glowColor = Color.FromArgb((int)(100 * glowIntensity), nodeColor.R, nodeColor.G, nodeColor.B);
                     glowBrush.CenterColor = glowColor;
                     glowBrush.SurroundColors = new Color[] { Color.FromArgb(0, nodeColor) };
@@ -628,7 +856,8 @@ public class GameForm : Form {
                 new PointF(cx + radius, cy - radius),
                 new PointF(cx + radius, cy + radius),
                 new PointF(cx - radius, cy + radius)
-            })) {
+            }))
+            {
                 innerGlow.CenterColor = Color.FromArgb(200, 255, 255, 255);
                 innerGlow.SurroundColors = new Color[] { Color.FromArgb(0, 255, 255, 255) };
                 g.FillEllipse(innerGlow, nodeRect);
@@ -637,7 +866,8 @@ public class GameForm : Form {
                 g.FillEllipse(brush, nodeRect);
             using (Pen pen = new Pen(Color.FromArgb(100, Color.White), 2))
                 g.DrawEllipse(pen, nodeRect);
-            if (i == 0 && isPlayer) {
+            if (i == 0 && isPlayer)
+            {
                 float eyeRadius = radius * 0.3f;
                 float pupilRadius = eyeRadius * 0.5f;
                 PointF leftEyeCenter = new PointF(cx - radius * 0.4f, cy - radius * 0.4f);
@@ -647,7 +877,7 @@ public class GameForm : Form {
                 PointF hatLeft = new PointF(cx - radius * 0.6f, cy - radius);
                 PointF hatRight = new PointF(cx + radius * 0.6f, cy - radius);
                 PointF hatTop = new PointF(cx, cy - radius - radius * 1.5f);
-                PointF[] hatPoints = { hatLeft, hatTop, hatRight };
+                PointF[] hatPoints = new PointF[] { hatLeft, hatTop, hatRight };
                 using (LinearGradientBrush hatBrush = new LinearGradientBrush(
                     new Point((int)hatLeft.X, (int)hatLeft.Y),
                     new Point((int)hatRight.X, (int)hatRight.Y),
@@ -658,7 +888,8 @@ public class GameForm : Form {
                     g.DrawPolygon(new Pen(Color.FromArgb(100, Color.White), 2), hatPoints);
                 }
             }
-            if (i < snake.Count - 1) {
+            if (i < snake.Count - 1)
+            {
                 float tNext = (float)(i + 1) / (snake.Count - 1);
                 float nextRadius = headRadius * (1 - tNext) + tailRadius * tNext;
                 Color nextColor = InterpolateColor(headColor, tailColor, tNext);
@@ -670,17 +901,21 @@ public class GameForm : Form {
                 float angle = (float)Math.Atan2(dy, dx);
                 PointF offset1 = new PointF(radius * (float)Math.Sin(angle), -radius * (float)Math.Cos(angle));
                 PointF offset2 = new PointF(nextRadius * (float)Math.Sin(angle), -nextRadius * (float)Math.Cos(angle));
-                using (GraphicsPath path = new GraphicsPath()) {
+                using (GraphicsPath path = new GraphicsPath())
+                {
                     PointF p1a = new PointF(p1.X - offset1.X, p1.Y - offset1.Y);
                     PointF p2a = new PointF(nextInterp.X - offset2.X, nextInterp.Y - offset2.Y);
                     PointF p2b = new PointF(nextInterp.X + offset2.X, nextInterp.Y + offset2.Y);
                     PointF p1b = new PointF(p1.X + offset1.X, p1.Y + offset1.Y);
                     PointF[] capsulePts = new PointF[] { p1a, p2a, p2b, p1b };
                     path.AddPolygon(capsulePts);
-                    if (Math.Abs(dx) < 0.001f && Math.Abs(dy) < 0.001f) {
+                    if (Math.Abs(dx) < 0.001f && Math.Abs(dy) < 0.001f)
+                    {
                         using (SolidBrush solidBrush = new SolidBrush(nodeColor))
                             g.FillPath(solidBrush, path);
-                    } else {
+                    }
+                    else
+                    {
                         Color avgColor = InterpolateColor(nodeColor, nextColor, 0.5f);
                         using (SolidBrush solidBrush = new SolidBrush(avgColor))
                             g.FillPath(solidBrush, path);
@@ -690,7 +925,8 @@ public class GameForm : Form {
         }
     }
 
-    protected override void OnPaint(PaintEventArgs e) {
+    protected override void OnPaint(PaintEventArgs e)
+    {
         Graphics g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
@@ -710,11 +946,13 @@ public class GameForm : Form {
         int endCol = (int)Math.Ceiling(rightWorld / cellSize);
         int startRow = (int)Math.Floor(topWorld / cellSize);
         int endRow = (int)Math.Ceiling(bottomWorld / cellSize);
-        for (int i = startCol; i <= endCol; i++) {
+        for (int i = startCol; i <= endCol; i++)
+        {
             float x = i * cellSize;
             g.DrawLine(Pens.Gray, x, topWorld, x, bottomWorld);
         }
-        for (int j = startRow; j <= endRow; j++) {
+        for (int j = startRow; j <= endRow; j++)
+        {
             float y = j * cellSize;
             g.DrawLine(Pens.Gray, leftWorld, y, rightWorld, y);
         }
@@ -729,26 +967,31 @@ public class GameForm : Form {
         foreach (var enemy in enemySnakes)
             DrawSnakeInterpolated(g, enemy.PrevSegments, enemy.Segments, enemy.BaseColor, false, alpha);
 
-        foreach (var food in foods) {
+        foreach (var food in foods)
+        {
             PointF prevPos = prevFoodPositions.ContainsKey(food.Id) ? prevFoodPositions[food.Id] : food.Position;
             PointF interpolated = Lerp(prevPos, food.Position, alpha);
 
             float cx = interpolated.X * cellSize + cellSize / 2f;
             float cy = interpolated.Y * cellSize + cellSize / 2f;
 
-            if (food.IsBigHead) {
+            if (food.IsBigHead)
+            {
                 float size = cellSize * 2.5f;
-                RectangleF foodRect = new RectangleF(cx - size/2, cy - size/2, size, size);
-                using (GraphicsPath path = new GraphicsPath()) {
+                RectangleF foodRect = new RectangleF(cx - size / 2, cy - size / 2, size, size);
+                using (GraphicsPath path = new GraphicsPath())
+                {
                     path.AddEllipse(foodRect);
-                    using (PathGradientBrush pgb = new PathGradientBrush(path)) {
+                    using (PathGradientBrush pgb = new PathGradientBrush(path))
+                    {
                         pgb.CenterColor = Color.Cyan;
                         pgb.SurroundColors = new Color[] { Color.Magenta };
                         g.FillEllipse(pgb, foodRect);
                     }
                 }
             }
-            else if (food.IsMagnetic) {
+            else if (food.IsMagnetic)
+            {
                 float oscillation = (float)(Math.Sin(animationPhase * 2) * 0.5 + 0.5);
                 Color magneticColor = InterpolateColor(Color.Red, Color.White, oscillation);
                 float size = cellSize * 1.5f;
@@ -756,20 +999,23 @@ public class GameForm : Form {
                 using (SolidBrush brush = new SolidBrush(magneticColor))
                     g.FillEllipse(brush, foodRect);
             }
-            else if (food.IsSpecial) {
+            else if (food.IsSpecial)
+            {
                 Color oscillatingColor = GetRainbowColor(rainbowPhase + 0.5f);
                 RectangleF foodRect = new RectangleF(cx - cellSize, cy - cellSize, cellSize * 2, cellSize * 2);
                 using (SolidBrush brush = new SolidBrush(oscillatingColor))
                     g.FillEllipse(brush, foodRect);
             }
-            else {
+            else
+            {
                 RectangleF foodRect = new RectangleF(interpolated.X * cellSize, interpolated.Y * cellSize, cellSize, cellSize);
                 using (SolidBrush brush = new SolidBrush(food.FoodColor))
                     g.FillEllipse(brush, foodRect);
             }
         }
 
-        foreach (var enemy in enemySnakes) {
+        foreach (var enemy in enemySnakes)
+        {
             PointF enemyHead = enemy.Segments[0];
             PointF enemyHeadPixel = new PointF(enemyHead.X * cellSize, enemyHead.Y * cellSize);
             PointF screenPos = new PointF(enemyHeadPixel.X - cameraOffset.X, enemyHeadPixel.Y - cameraOffset.Y);
@@ -779,11 +1025,11 @@ public class GameForm : Form {
         }
 
         g.ResetTransform();
-        string scoreText = string.Format("Player: {0}", playerScore);
+        string scoreText = "Player: " + playerScore;
         g.DrawString(scoreText, this.Font, Brushes.Black, 5, ClientSize.Height - 35);
 
-        // Draw death log overlay in top-right corner if enabled.
-        if (deathLogEnabled) {
+        if (deathLogEnabled)
+        {
             g.ResetTransform();
             int margin = 10;
             float lineHeight = this.Font.GetHeight(g);
@@ -791,22 +1037,56 @@ public class GameForm : Form {
             float overlayWidth = 200;
             float overlayX = ClientSize.Width - overlayWidth - margin;
             float overlayY = margin;
-            using (SolidBrush backBrush = new SolidBrush(Color.FromArgb(128, Color.Black))) {
+            using (SolidBrush backBrush = new SolidBrush(Color.FromArgb(128, Color.Black)))
+            {
                 g.FillRectangle(backBrush, overlayX, overlayY, overlayWidth, overlayHeight);
             }
-            for (int i = 0; i < deathLog.Count; i++) {
+            for (int i = 0; i < deathLog.Count; i++)
+            {
                 g.DrawString(deathLog[i], this.Font, Brushes.White, overlayX + margin, overlayY + margin + i * lineHeight);
             }
         }
+    }
+
+    void ShowLeaderboard()
+    {
+        UsernamePromptForm prompt = new UsernamePromptForm();
+        if (prompt.ShowDialog() == DialogResult.OK)
+        {
+            string username = prompt.Username;
+            bool submitSuccess = LeaderboardService.SubmitScore(username, playerScore);
+            string leaderboardData = LeaderboardService.GetLeaderboard();
+            LeaderboardDisplayForm leaderboardForm = new LeaderboardDisplayForm(leaderboardData);
+            leaderboardForm.ShowDialog();
+        }
+        Application.Exit();
+    }
+}
+
+//
+// CandidateMove struct used for enemy candidate moves.
+//
+public struct CandidateMove
+{
+    public float VX;
+    public float VY;
+    public float Dist;
+    public CandidateMove(float vx, float vy, float dist)
+    {
+        VX = vx;
+        VY = vy;
+        Dist = dist;
     }
 }
 
 //
 // Program: Entry point.
 //
-public static class Program {
+public static class Program
+{
     [STAThread]
-    public static void Main() {
+    public static void Main()
+    {
         Application.EnableVisualStyles();
         Application.Run(new MainMenuForm());
     }
