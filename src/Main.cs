@@ -218,7 +218,7 @@ public class MainMenuForm : Form
 {
     public MainMenuForm()
     {
-        this.Text = "Snek Menu - Version 1.1.2";
+        this.Text = "Snek Menu - Version 1.1.3";
         this.ClientSize = new Size(600, 400);
         this.StartPosition = FormStartPosition.CenterScreen;
         this.FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -239,8 +239,8 @@ public class MainMenuForm : Form
         changelogBox.Location = new Point(320, 20);
         changelogBox.Size = new Size(250, 300);
         Label changelogLabel = new Label();
-        changelogLabel.Text = "Version 1.1.2:\n" +
-            "- Randomized normal food color and added transparency.\n" +
+        changelogLabel.Text = "Version 1.1.3:\n" +
+            "- Added HTTP assembly\n" +
             "- Added leaderboard!";
         changelogLabel.Location = new Point(10, 20);
         changelogLabel.Size = new Size(230, 270);
