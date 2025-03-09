@@ -228,7 +228,7 @@ public class MainMenuForm : Form
 
         // Existing instructions and changelog controls.
         Label instructionsLabel = new Label();
-        instructionsLabel.Text = "Controls:\n- Move snake with mouse (WASD/Arrow keys override).\n- Press Space or hold mouse down to boost (costs 1 segment/tick).\n- Magnetic and special food trigger unique effects.";
+        instructionsLabel.Text = "Controls:\n- Move snake with mouse (WASD/Arrow keys override).\n- Press Space or hold mouse down to boost (costs 1 segment/tick).\n- Magnetic and special food trigger unique effects.\n- Escape to pause";
         instructionsLabel.Location = new Point(20, 20);
         instructionsLabel.Size = new Size(280, 150);
         instructionsLabel.Font = new Font("Arial", 10);
@@ -239,7 +239,7 @@ public class MainMenuForm : Form
         changelogBox.Location = new Point(320, 20);
         changelogBox.Size = new Size(250, 300);
         Label changelogLabel = new Label();
-        changelogLabel.Text = "Version 1.1.4:\n- Added HTTP assembly\n- Added leaderboard!";
+        changelogLabel.Text = "Version 1.1.5:\n- Added pause\n- Added leaderboard!";
         changelogLabel.Location = new Point(10, 20);
         changelogLabel.Size = new Size(230, 270);
         changelogLabel.Font = new Font("Arial", 9);
@@ -350,6 +350,9 @@ public class GameForm : Form
     private bool deathLogEnabled = true;
     private List<string> deathLog = new List<string>();
 
+    // Added: pause/resume
+    bool isPaused = false;  
+
     private struct Food
     {
         public int Id;
@@ -388,7 +391,7 @@ public class GameForm : Form
     {
         this.ClientSize = new Size(cols * cellSize, rows * cellSize + 40);
         this.DoubleBuffered = true;
-        this.Text = "Snek - Version 1.1.0";
+        this.Text = "Snek - Version 1.1.5";
         this.KeyPreview = true;
         mapCenter = new PointF(cols / 2f, rows / 2f);
         mapRadius = Math.Max(cols, rows) * 1.5f;
@@ -489,6 +492,24 @@ public class GameForm : Form
 
     private void GameForm_KeyDown(object sender, KeyEventArgs e)
     {
+        // Added to toggle pause on ESC
+        if(e.KeyCode == Keys.Escape)
+        {
+            isPaused = !isPaused;
+            if(isPaused)
+            {
+                logicTimer.Stop();
+                renderTimer.Stop();
+            }
+            else
+            {
+                lastUpdateTime = DateTime.Now;
+                logicTimer.Start();
+                renderTimer.Start();
+            }
+            return;
+        }
+
         keyboardOverride = true;
         if (e.KeyCode == Keys.Up || e.KeyCode == Keys.W)
         {
@@ -528,6 +549,8 @@ public class GameForm : Form
 
     void UpdateGame()
     {
+        if (isPaused) return;
+
         float pickupThreshold = 1.2f;
         prevPlayerSnake = playerSnake.Select(p => new PointF(p.X, p.Y)).ToList();
         foreach (var enemy in enemySnakes)
@@ -739,7 +762,9 @@ public class GameForm : Form
                 float playerDist = Distance(foods[i].Position, playerSnake[0]);
                 var activeEnemies = enemySnakes.Where(e => e.MagnetTicks > 0).ToList();
                 float enemyDist = activeEnemies.Min(e => Distance(e.Segments[0], foods[i].Position));
-                target = (playerDist <= enemyDist) ? playerSnake[0] : activeEnemies.First(e => Distance(e.Segments[0], foods[i].Position) == enemyDist).Segments[0];
+                target = (playerDist <= enemyDist)
+                    ? playerSnake[0]
+                    : activeEnemies.First(e => Distance(e.Segments[0], foods[i].Position) == enemyDist).Segments[0];
             }
             else if (playerActive)
             {
