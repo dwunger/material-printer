@@ -16,8 +16,11 @@ if (-not (Test-Path '.\muginn')) { mkdir '.\muginn' } # Since we can't force inc
 # We don't have git, so I'll just handroll something
 if ([System.Version]$LOCAL_VERSION -lt [System.Version]$REMOTE_VERSION) {
     
-    Update-ClientVerbose
-    Clear-Host
+    # A basic version  of Update client has been ported to C#
+    # We compile Huginn.cs with Huginn.ps1
+    powershell.exe -ExecutionPolicy Bypass -File .\Huginn.ps1
+    #Update-ClientVerbose 
+    #Clear-Host
     #$UpdateClient = Monitored_Start -Process 'powershell' -Args '-ExecutionPolicy Bypass -File .\Update.ps1'
     #
     # while (!$UpdateClient.HasExited) {
