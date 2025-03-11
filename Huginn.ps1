@@ -1,10 +1,13 @@
 $logFile = ".\error_log.txt"
 $sourceCode = Get-Content -Path ".\Huginn.cs" -Raw
 $assemblies = @(
-    "System.dll", 
-    "System.Net.Http.dll", 
-    "System.Core.dll"
+    "System.dll",
+    "System.Net.Http.dll",
+    "System.Core.dll",
+    "System.Linq.dll",            
+    "Microsoft.CSharp.dll"        
 )
+
 try {
     $assembly = Add-Type -TypeDefinition $sourceCode -Language CSharp -ReferencedAssemblies $assemblies -PassThru
     if ($assembly) {
