@@ -220,7 +220,7 @@ public class MainMenuForm : Form
 
     public MainMenuForm()
     {
-        this.Text = "Snek Menu - Version 1.1.4";
+        this.Text = "Snek Menu - Version 1.1.6";
         this.ClientSize = new Size(600, 500);
         this.StartPosition = FormStartPosition.CenterScreen;
         this.FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -239,7 +239,7 @@ public class MainMenuForm : Form
         changelogBox.Location = new Point(320, 20);
         changelogBox.Size = new Size(250, 300);
         Label changelogLabel = new Label();
-        changelogLabel.Text = "Version 1.1.5:\n- Added pause\n- Added leaderboard!";
+        changelogLabel.Text = "Version 1.1.6:\n- Removed API hit from initialization logic\n- Improved startup times";
         changelogLabel.Location = new Point(10, 20);
         changelogLabel.Size = new Size(230, 270);
         changelogLabel.Font = new Font("Arial", 9);
@@ -405,7 +405,7 @@ public class GameForm : Form
     {
         this.ClientSize = new Size(cols * cellSize, rows * cellSize + 40);
         this.DoubleBuffered = true;
-        this.Text = "Snek - Version 1.1.5";
+        this.Text = "Snek - Version 1.1.6";
         this.KeyPreview = true;
         mapCenter = new PointF(cols / 2f, rows / 2f);
         mapRadius = Math.Max(cols, rows) * 1.5f;
