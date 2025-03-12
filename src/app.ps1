@@ -86,7 +86,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- SP Thaw&Open $RIGHT_ARROW Thawed`n- Improved Snek startup times`n- Huginn is now blazingly fast!`n- Moved misc controls to [Help]"
+$STARTUP_LOGMSG = "- SP Thaw&Open $RIGHT_ARROW Thawed`n- Improved Snek startup times`n- Huginn is now blazingly fast!`n- Moved misc controls to [Help]`n- Hidden exploding duck animation"
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 
 # Import-Module command with detailed parameter explanation
@@ -736,6 +736,9 @@ function Handle-KeyInput {
     elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::H) {
         return "help"
     }
+    elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::I) {
+        return "duck"
+    }
     return "continue"
 }
 
@@ -915,20 +918,79 @@ function Muginn {
     $Screen.push_down($BOLD + "Darkness: $value")
 }
 
+# Draw a duck frame using direct cursor positioning for each line.
+function Write-DuckFrame {
+    param(
+        [int]$x,
+        [string]$frameType,  # Accepts "open", "normal", or "closed"
+        [int]$y = 0
+    )
+    $CIRCLED_WHITE_BULLET = [char]0x2022
+    [System.Console]::SetCursorPosition($x, $y)
+    Write-Host "    _" -NoNewline
+    [System.Console]::SetCursorPosition($x, $y + 1)
+    switch ($frameType) {
+        "open"   { Write-Host " __($CIRCLED_WHITE_BULLET)<" -NoNewline }
+        "normal" { Write-Host " __($CIRCLED_WHITE_BULLET)=" -NoNewline }
+        "closed" { Write-Host " __($CIRCLED_WHITE_BULLET)>" -NoNewline }
+    }
+    [System.Console]::SetCursorPosition($x, $y + 2)
+    Write-Host " \___)" -NoNewline
+}
+
+# Clear the region where the duck frame was drawn by writing spaces.
+function Clear-DuckFrame {
+    param(
+        [int]$x,
+        [int]$y,
+        [int]$clearWidth = 20  # Number of characters to clear per line
+    )
+    for ($i = 0; $i -lt 3; $i++) {
+        [System.Console]::SetCursorPosition($x, $y + $i)
+        Write-Host (" " * $clearWidth) -NoNewline
+    }
+}
+
+# Animate the duck moving across the screen using position writes for both drawing and erasing.
+function Invoke-DuckAnimation {
+    $width = [System.Console]::WindowWidth
+    $maxX = $width - 65  # Reserve room so the duck doesn't run off-screen.
+    $duckY = 10         # Fixed vertical position for the duck.
+    $states = @("open", "normal", "closed", "normal")
+    
+    [Console]::CursorVisible = $false
+    Clear-Host
+    $oldX = $null
+    for ($x = 0; $x -le $maxX; $x++) {
+        # Erase the previous duck frame by overwriting with spaces.
+        if ($oldX -ne $null) {
+            Clear-DuckFrame -x $oldX -y $duckY
+        }
+        $state = $states[$x % $states.Length]
+        Write-DuckFrame -x $x -frameType $state -y $duckY
+        Start-Sleep -Milliseconds 15
+        $oldX = $x
+    }
+    # Clear the final duck frame.
+    Clear-DuckFrame -x $oldX -y $duckY
+    [Console]::CursorVisible = $true
+}
+
+# Animate an explosion using math-based particle motion.
 function Invoke-AsciiExplosion {
-    # Get console dimensions and center point
+    # Get console dimensions and center point.
     $width   = [System.Console]::WindowWidth
     $height  = [System.Console]::WindowHeight
     $centerX = [Math]::Floor($width / 2)
     $centerY = [Math]::Floor($height / 2)
 
-    # Setup particles with random direction, speed, and color (Red or DarkYellow for an orange hue)
+    # Initialize explosion particles with random angles, speeds, and color (red/orange hues).
     $numParticles = 50
     $colors = @("Red", "DarkYellow")
     $particles = @()
     for ($i = 0; $i -lt $numParticles; $i++) {
         $angle = Get-Random -Minimum 0 -Maximum (2 * [Math]::PI)
-        $speed = Get-Random -Minimum 5 -Maximum 15  # characters/second
+        $speed = Get-Random -Minimum 5 -Maximum 15  # characters per second
         $particles += [PSCustomObject]@{
             x     = $centerX
             y     = $centerY
@@ -938,12 +1000,13 @@ function Invoke-AsciiExplosion {
         }
     }
 
-    # Animation parameters: 25 frames over 5 seconds with a slight gravity effect
+    # Animate over 25 frames in 5 seconds with a slight gravity effect.
     $frames  = 25
     $dt      = 5.0 / $frames
     $gravity = 2.0
 
     for ($frame = 0; $frame -lt $frames; $frame++) {
+        # Update particle positions.
         foreach ($p in $particles) {
             $p.x += $p.vx * $dt
             $p.y += $p.vy * $dt
@@ -952,6 +1015,7 @@ function Invoke-AsciiExplosion {
 
         Clear-Host
 
+        # Draw each particle if within screen bounds.
         foreach ($p in $particles) {
             $xi = [Math]::Round($p.x)
             $yi = [Math]::Round($p.y)
@@ -966,11 +1030,16 @@ function Invoke-AsciiExplosion {
 }
 
 
-
+# Main function: Animate the duck crossing the screen, then trigger the explosion.
+function Invoke-DuckAndExplosion {
+    Invoke-DuckAnimation
+    Start-Sleep -Seconds 0.5  # Brief pause between animations
+    Invoke-AsciiExplosion
+}
 
 
 function main() {
-    Invoke-AsciiExplosion
+
     #Set-Window-Dimensions -width 69 -height 20 # Without side pane
     #Set-Window-Dimensions -width 105 -height 20 # With side pane
     Set-Window-Dimensions -width 112 -height 20 # With side pane
@@ -1150,6 +1219,11 @@ function main() {
                     "help"
                     {
                         ayuda
+                    }
+                    "duck"
+                    {
+                        Invoke-DuckAndExplosion
+                        Refresh-Display
                     }
            }
         }
