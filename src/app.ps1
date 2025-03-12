@@ -922,11 +922,11 @@ function main() {
     
     #Set-Window-Dimensions -width 69 -height 20 # Without side pane
     #Set-Window-Dimensions -width 105 -height 20 # With side pane
-    Set-Window-Dimensions -width 107 -height 20 # With side pane
+    Set-Window-Dimensions -width 112 -height 20 # With side pane
     Clear-Host
 
     #$global:side_pane = [StackScreen]::new(67,0,34,18)
-    $global:side_pane = [StackScreen]::new(71,0,34,$PrimaryDisplayHeight)
+    $global:side_pane = [StackScreen]::new(71,0,39,$PrimaryDisplayHeight)
 
     $global:side_pane.draw_border()
 
