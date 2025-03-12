@@ -915,11 +915,62 @@ function Muginn {
     $Screen.push_down($BOLD + "Darkness: $value")
 }
 
+function Invoke-AsciiExplosion {
+    # Get console dimensions and center point
+    $width   = [System.Console]::WindowWidth
+    $height  = [System.Console]::WindowHeight
+    $centerX = [Math]::Floor($width / 2)
+    $centerY = [Math]::Floor($height / 2)
+
+    # Setup particles with random direction, speed, and color (Red or DarkYellow for an orange hue)
+    $numParticles = 50
+    $colors = @("Red", "DarkYellow")
+    $particles = @()
+    for ($i = 0; $i -lt $numParticles; $i++) {
+        $angle = Get-Random -Minimum 0 -Maximum (2 * [Math]::PI)
+        $speed = Get-Random -Minimum 5 -Maximum 15  # characters/second
+        $particles += [PSCustomObject]@{
+            x     = $centerX
+            y     = $centerY
+            vx    = $speed * [Math]::Cos($angle)
+            vy    = $speed * [Math]::Sin($angle)
+            color = $colors[(Get-Random -Minimum 0 -Maximum $colors.Count)]
+        }
+    }
+
+    # Animation parameters: 25 frames over 5 seconds with a slight gravity effect
+    $frames  = 25
+    $dt      = 5.0 / $frames
+    $gravity = 2.0
+
+    for ($frame = 0; $frame -lt $frames; $frame++) {
+        foreach ($p in $particles) {
+            $p.x += $p.vx * $dt
+            $p.y += $p.vy * $dt
+            $p.vy += $gravity * $dt
+        }
+
+        Clear-Host
+
+        foreach ($p in $particles) {
+            $xi = [Math]::Round($p.x)
+            $yi = [Math]::Round($p.y)
+            if ($xi -ge 0 -and $xi -lt $width -and $yi -ge 0 -and $yi -lt $height) {
+                [System.Console]::SetCursorPosition($xi, $yi)
+                Write-Host "*" -ForegroundColor $p.color -NoNewline
+            }
+        }
+        Start-Sleep -Seconds $dt
+    }
+    Clear-Host
+}
+
+
 
 
 
 function main() {
-    
+    Invoke-AsciiExplosion
     #Set-Window-Dimensions -width 69 -height 20 # Without side pane
     #Set-Window-Dimensions -width 105 -height 20 # With side pane
     Set-Window-Dimensions -width 112 -height 20 # With side pane
