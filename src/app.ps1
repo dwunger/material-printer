@@ -730,6 +730,9 @@ function Handle-KeyInput {
     elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::C) {
         return "cmd"
     }
+    elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::F5) {
+        return "reload"
+    }
     return "continue"
 }
 
@@ -1069,6 +1072,10 @@ function main() {
                     "debug"
                     {
                         $host.EnterNestedPrompt()
+                    }
+                    "reload"
+                    {
+                        Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\app.ps1"' -NoNewWindow
                     }
            }
         }
