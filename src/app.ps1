@@ -1075,7 +1075,8 @@ function main() {
                     }
                     "reload"
                     {
-                        Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\app.ps1"' -NoNewWindow
+                        Start-Process conhost.exe -ArgumentList 'powershell -ExecutionPolicy Bypass -File ".\src\app.ps1"'
+                        return 0
                     }
            }
         }
