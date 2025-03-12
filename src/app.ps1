@@ -86,7 +86,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- SP Thaw&Open $RIGHT_ARROW Thawed`n- Improved Snek startup `n  times`n- Huginn is now blazing`n  -ly fast!"
+$STARTUP_LOGMSG = "- SP Thaw&Open $RIGHT_ARROW Thawed`n- Improved Snek startup times`n- Huginn is now blazingly fast!`n- Moved misc controls to [Help]"
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 
 # Import-Module command with detailed parameter explanation
