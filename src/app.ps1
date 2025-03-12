@@ -811,7 +811,7 @@ function refresh-display-helper($menu_controls, $state_controls, $global:VERSION
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
-    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config | 'm' - Muginn | 'u' - Update", $global:VERSION))
+    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush print queue | 'h' - Help", $global:VERSION))
 }
 
 function open_helper() {
@@ -845,7 +845,7 @@ function Refresh-Display {
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
-    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config | 'm' - Muginn | 'u' - Update", $global:VERSION))
+    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush print queue | 'h' - Help", $global:VERSION))
     $global:side_pane.DISABLE_REFRESH = $false
     $global:side_pane.redraw()
     $global:side_pane.draw_border()
@@ -956,7 +956,7 @@ function main() {
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
-    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush queue | 'r' - Resource Config | 'm' - Muginn | 'u' - Update", $global:VERSION))
+    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush print queue | 'h' - Help", $global:VERSION))
 
     $instrument_menu_selection = 0
     $selected_group_index = 0
