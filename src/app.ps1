@@ -740,24 +740,20 @@ function Handle-KeyInput {
 }
 
 function ayuda {
-    $global:side_pane.push_down("c - Open Powershell ISE")
-    $global:side_pane.push_down("d - Start Runtime Debugging")
-}
-function ayuda {
+    $global:side_pane.push_down("$BOLD$CYAN_FG[ CONTROLS HELP ]$RESET_FMT")
     $global:side_pane.push_down("[b]  - Return back")
     $global:side_pane.push_down("[c]  - Open Powershell ISE")
     $global:side_pane.push_down("[d]  - Start Runtime Debugging")
-    $global:side_pane.push_down("[e]  - Electrolyte labels")
-    $global:side_pane.push_down("[f]  - Flush queue")
+    $global:side_pane.push_down("[e]  - Print ISE Calibration labels")
+    $global:side_pane.push_down("[f]  - Flush printing queue")
     $global:side_pane.push_down("[F5] - Reload application")
-    $global:side_pane.push_down("[h]  - Show help")
+    $global:side_pane.push_down("[h]  - Show help output")
     $global:side_pane.push_down("[m]  - Muginn utility")
-    $global:side_pane.push_down("[o]  - Toggle open")
+    $global:side_pane.push_down("[o]  - Toggle material open status")
     $global:side_pane.push_down("[p]  - Select printer")
-    $global:side_pane.push_down("[r]  - Resource config")
+    $global:side_pane.push_down("[r]  - Edit online resources")
     $global:side_pane.push_down("[s]  - Launch Snek")
-    $global:side_pane.push_down("[u]  - Update program")
-    $global:side_pane.push_down("$BOLD$CYAN_FG[ CONTROLS HELP ]$RESET_FMT")
+    $global:side_pane.push_down("[u]  - Force update")
 }
 
 # Helper function for printer selection
