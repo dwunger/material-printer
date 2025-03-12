@@ -86,8 +86,10 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- SP Thaw&Open $RIGHT_ARROW Thawed`n- Improved Snek startup times`n- Huginn is now blazingly fast!`n- Moved misc controls to [Help]"
+$STARTUP_LOGMSG = "- SP Thaw&Open $RIGHT_ARROW Thawed`n- Improved Snek startup `n  times`n- Huginn is now blazing`n  -ly fast!"
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
+
+# Import-Module command with detailed parameter explanation
 
 #Import-Module [-Name] <string[]> # Name or path of the module to import, supports wildcards for names.
 #  [-Global]                      # Imports the module into the global session state for all sessions.
@@ -107,6 +109,12 @@ $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 #  [-NoClobber]                   # Prevents the import from overwriting existing functions, variables, etc.
 #  [-Scope {Local | Global}]      # Specifies the scope in which this command is run.
 #  [<CommonParameters>]           # Common parameters that can be used with most cmdlets.
+###################################IMPORTS#################################################
+
+
+##########################
+
+
 
 #########################
 
@@ -802,7 +810,7 @@ function refresh-display-helper($menu_controls, $state_controls, $global:VERSION
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
-    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush print queue | 'h' - Help", $global:VERSION))
+    $global:display.setFooter(@("", $menu_controls, $state_controls, $global:VERSION))
 }
 
 function open_helper() {
@@ -836,7 +844,7 @@ function Refresh-Display {
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
     $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
 
-    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush print queue | 'h' - Help", $global:VERSION))
+    $global:display.setFooter(@("", $menu_controls, $state_controls, $global:VERSION))
     $global:side_pane.DISABLE_REFRESH = $false
     $global:side_pane.redraw()
     $global:side_pane.draw_border()
@@ -945,9 +953,9 @@ function main() {
 
     $global:display = [Display]::new($PrimaryDisplayHeight)
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
-    $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
+    $state_controls= "P - Change printer | E - ISE Labels | F - flush print queue | H - Help";
 
-    $global:display.setFooter(@("", $menu_controls, $state_controls, "'f' - flush print queue | 'h' - Help", $global:VERSION))
+    $global:display.setFooter(@("", $menu_controls, $state_controls, $global:VERSION))
 
     $instrument_menu_selection = 0
     $selected_group_index = 0
