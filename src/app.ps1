@@ -811,7 +811,7 @@ $global:is_open = $false
 function refresh-display-helper($menu_controls, $state_controls, $global:VERSION) {
     $global:display = [Display]::new(18)
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
-    $state_controls= "Misc Controls: 'p' - Change printer | 'e' - Electrolyte Labels";
+    $state_controls= "P - Change printer | E - ISE Labels | F - flush print queue | H - Help";
 
     $global:display.setFooter(@("", $menu_controls, $state_controls, $global:VERSION))
 }
