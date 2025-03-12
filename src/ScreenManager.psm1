@@ -10,6 +10,8 @@ $script:GREEN_FG = "$ESC[92m"
 $script:GRAY_BG = "$ESC[47m"
 $script:BLACK_FG = "$ESC[30m"
 
+$FULL_BLOCK_CHAR = [char]9608
+
 function Set-Window-Dimensions {
     param (
         [Parameter(Mandatory=$true)]
@@ -174,7 +176,7 @@ class Screen {
         $this.y = $y
         $this.height = $height
         $this.width = $width
-        $this.Fill("█", 0, 0, $width, $height)
+        $this.Fill([char]9608, 0, 0, $width, $height)
         $this.Clear()
     }
 
@@ -208,39 +210,60 @@ class Screen {
 
 
     [void] Position_Write([string]$str, [int] $rel_x, [int] $rel_y) {
-        # Bounds Checking
         if (-not $this._in_bounds($rel_x, $rel_y)) { return }
     
         $lines = $str -split "`n"
         $string_head = $lines[0]
         $string_tail = if ($lines.Count -gt 1) { $lines[1..($lines.Count-1)] -join "`n" } else { "" }
     
-        # Calculate remaining width on the current line
         $remaining_width = $this.width - $rel_x
-    
-        # Truncate string_head if it's longer than the remaining width
-        if ($string_head.Length -gt $remaining_width) {
-            $string_head = $string_head.Substring(0, $remaining_width)
+        # Compute visible length by stripping ANSI escape sequences
+        $visible = [regex]::Replace($string_head, "$($script:ESC)\[[0-9;]*m", "")
+        if ($visible.Length -gt $remaining_width) {
+            $truncated = ""
+            $visibleCount = 0
+            $i = 0
+            while ($i -lt $string_head.Length -and $visibleCount -lt $remaining_width) {
+                if ($string_head[$i] -eq $script:ESC) {
+                    # Append the full ANSI sequence without counting it
+                    $ansiSeq = $script:ESC
+                    $i++
+                    while ($i -lt $string_head.Length -and $string_head[$i] -ne 'm') {
+                        $ansiSeq += $string_head[$i]
+                        $i++
+                    }
+                    if ($i -lt $string_head.Length) {
+                        $ansiSeq += $string_head[$i]
+                        $i++
+                    }
+                    $truncated += $ansiSeq
+                } else {
+                    $truncated += $string_head[$i]
+                    $visibleCount++
+                    $i++
+                }
+            }
+            $string_head = $truncated
         }
     
         [console]::SetCursorPosition($this.x + $rel_x, $this.y + $rel_y)
         Write-Host $string_head -NoNewline
-    
+
         if ($string_tail -ne "") {
-            # Move to the next line if there's more to write
             $this.Position_Write($string_tail, 0, $rel_y + 1)
         }
     }
 
+
     [void] draw_border() {   
         #Top
-        $this.Fill("█", 0, 0, $this.width, 1)
+        $this.Fill([char]9608, 0, 0, $this.width, 1)
         #Left
-        $this.Fill("█", 0, 0, 1, $this.height)
+        $this.Fill([char]9608, 0, 0, 1, $this.height)
         #Right
-        $this.Fill("█", $this.width - 1, 0, 1, $this.height)
+        $this.Fill([char]9608, $this.width - 1, 0, 1, $this.height)
         #Bottom
-        $this.Fill("█", 0, $this.height - 1 , $this.width, 1)
+        $this.Fill([char]9608, 0, $this.height - 1 , $this.width, 1)
     }
 }
 
