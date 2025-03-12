@@ -86,10 +86,8 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- SP Thaw&Open $RIGHT_ARROW Thawed`n- Improved Snek startup `n  times`n- Huginn is now blazing`n  -ly fast!"
+$STARTUP_LOGMSG = "- SP Thaw&Open $RIGHT_ARROW Thawed`n- Improved Snek startup times`n- Huginn is now blazingly fast!`n- Moved misc controls to [Help]"
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
-
-# Import-Module command with detailed parameter explanation
 
 #Import-Module [-Name] <string[]> # Name or path of the module to import, supports wildcards for names.
 #  [-Global]                      # Imports the module into the global session state for all sessions.
@@ -109,12 +107,6 @@ $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 #  [-NoClobber]                   # Prevents the import from overwriting existing functions, variables, etc.
 #  [-Scope {Local | Global}]      # Specifies the scope in which this command is run.
 #  [<CommonParameters>]           # Common parameters that can be used with most cmdlets.
-###################################IMPORTS#################################################
-
-
-##########################
-
-
 
 #########################
 
