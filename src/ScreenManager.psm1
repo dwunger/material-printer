@@ -1,4 +1,4 @@
-﻿# ScreenManager.psm1
+# ScreenManager.psm1
 
 # ANSI escape sequences
 $script:ESC = [char]27
