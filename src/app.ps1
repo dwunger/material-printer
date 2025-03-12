@@ -743,18 +743,22 @@ function Handle-KeyInput {
 }
 
 function ayuda {
+    # Developer controls (in reverse alphabetical order for the stack)
     $global:side_pane.push_down("$BOLD$CYAN_FG[u]$RESET_FMT  - Force update")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[m]$RESET_FMT  - Muginn utility")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[F5]$RESET_FMT - Reload application")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[d]$RESET_FMT  - Start Runtime Debugging")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[c]$RESET_FMT  - Open Powershell ISE")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[ DEVELOPER ]$RESET_FMT")
+
+    # Regular controls (in reverse alphabetical order for the stack)
     $global:side_pane.push_down("$BOLD$CYAN_FG[s]$RESET_FMT  - Launch Snek")
     $global:side_pane.push_down("$BOLD$CYAN_FG[r]$RESET_FMT  - Edit online resources")
     $global:side_pane.push_down("$BOLD$CYAN_FG[p]$RESET_FMT  - Select printer")
     $global:side_pane.push_down("$BOLD$CYAN_FG[o]$RESET_FMT  - Toggle material open status")
-    $global:side_pane.push_down("$BOLD$CYAN_FG[m]$RESET_FMT  - Muginn utility")
     $global:side_pane.push_down("$BOLD$CYAN_FG[h]$RESET_FMT  - Show help output")
-    $global:side_pane.push_down("$BOLD$CYAN_FG[F5]$RESET_FMT - Reload application")
     $global:side_pane.push_down("$BOLD$CYAN_FG[f]$RESET_FMT  - Flush printing queue")
     $global:side_pane.push_down("$BOLD$CYAN_FG[e]$RESET_FMT  - Print ISE Calibration labels")
-    $global:side_pane.push_down("$BOLD$CYAN_FG[d]$RESET_FMT  - Start Runtime Debugging")
-    $global:side_pane.push_down("$BOLD$CYAN_FG[c]$RESET_FMT  - Open Powershell ISE")
     $global:side_pane.push_down("$BOLD$CYAN_FG[ CONTROLS HELP ]$RESET_FMT")
 }
 
