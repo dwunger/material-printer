@@ -740,18 +740,18 @@ function Handle-KeyInput {
 }
 
 function ayuda {
-    $global:side_pane.push_down("[u]  - Force update")
-    $global:side_pane.push_down("[s]  - Launch Snek")
-    $global:side_pane.push_down("[r]  - Edit online resources")
-    $global:side_pane.push_down("[p]  - Select printer")
-    $global:side_pane.push_down("[o]  - Toggle material open status")
-    $global:side_pane.push_down("[m]  - Muginn utility")
-    $global:side_pane.push_down("[h]  - Show help output")
-    $global:side_pane.push_down("[F5] - Reload application")
-    $global:side_pane.push_down("[f]  - Flush printing queue")
-    $global:side_pane.push_down("[e]  - Print ISE Calibration labels")
-    $global:side_pane.push_down("[d]  - Start Runtime Debugging")
-    $global:side_pane.push_down("[c]  - Open Powershell ISE")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[u]$RESET_FMT  - Force update")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[s]$RESET_FMT  - Launch Snek")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[r]$RESET_FMT  - Edit online resources")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[p]$RESET_FMT  - Select printer")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[o]$RESET_FMT  - Toggle material open status")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[m]$RESET_FMT  - Muginn utility")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[h]$RESET_FMT  - Show help output")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[F5]$RESET_FMT - Reload application")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[f]$RESET_FMT  - Flush printing queue")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[e]$RESET_FMT  - Print ISE Calibration labels")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[d]$RESET_FMT  - Start Runtime Debugging")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[c]$RESET_FMT  - Open Powershell ISE")
     $global:side_pane.push_down("$BOLD$CYAN_FG[ CONTROLS HELP ]$RESET_FMT")
 }
 
@@ -865,7 +865,7 @@ function Muginn {
     $screen_width = 71
 
     #Need to expand the console to fit muginn
-    Set-Window-Dimensions -width 108 -height (20 + $screen_height)
+    Set-Window-Dimensions -width 112 -height (20 + $screen_height)
     $Screen = [StackScreen]::new(0,$PrimaryDisplayHeight, $screen_width, $screen_height)
     $Screen.draw_border()
 
