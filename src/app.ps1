@@ -317,22 +317,22 @@ class PrinterManager {
 
     [void]SetDefaultPrinter([string]$printerName) {
         $found = $false
+        $actualPrinterName = $null
         foreach ($printer in $this.Printers) {
-            if ($printer["Name"] -eq $printerName) {
+            if (($printer["Name"] -eq $printerName) -or ($printer["IpAddress"] -eq $printerName)) {
                 $printer["IsDefault"] = "1"
                 $global:printerIp = $printer["IpAddress"]
                 $this.DefaultPrinterIp = $printer["IpAddress"]
+                $actualPrinterName = $printer["Name"]
                 $found = $true
-                
-
             } else {
                 $printer["IsDefault"] = ""
             }
         }
         if ($found) {
             $this.SaveConfig()
-            Write-Host "Default printer set to: $printerName"
-            $global:side_pane.push_down("Loaded Printer:`n ${global:GREEN_FG}$(&{$printerName})")
+            Write-Host "Default printer set to: $actualPrinterName"
+             $global:side_pane.push_down("Loaded Printer:`n ${global:GREEN_FG}$actualPrinterName")
         } else {
             Write-Host "Printer not found: $printerName"
         }
@@ -588,19 +588,38 @@ class ElectrolyteLabels {
     }
 }
 
+function Set-DefaultPrinter {
+     param(
+     [string] $printerID # This is either a printer name or IP address
+     )
+     $printerManager = [PrinterManager]::new("./src/printer_config.csv")
+     $printerManager.SetDefaultPrinter($printerID)
+ }
+
 function electrolyte-labels {
     
     if ($global:DISABLE_PRINT) {
         return
     }
 
-    # yes we are hardcoding this
-    $printerIp = "10.32.40.22" # micro dual
+    $savedIP = $global:PrinterIp
+ 
+     Clear-Host
+     Write-Host "Print ISE Calibration labels to..."
+     select-printer
+ 
+     # no, we are not anymore. we live in a society
+     $printerIp = $global:PrinterIp
+
     $printerPort = 9100
     
     $electrolyteLabels = [ElectrolyteLabels]::new($printerIp, $printerPort)
     $electrolyteLabels.PrintLabels()
     Clear-Host
+
+     $global:side_pane.push_down("Restored your printer preference.")
+ 
+     Set-DefaultPrinter -printerID $savedIP
 }
 
 ###################################ELECTROLYTE LABELS#######################################
@@ -767,7 +786,6 @@ function ayuda {
 
 # Helper function for printer selection
 function select-printer() {
-    Clear-Host
     # Initialize display
     $global:display = [Display]::new(15)
     $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
@@ -1167,6 +1185,7 @@ function main() {
                     "select-printer" 
                     {
                         $global:side_pane.Hide()
+                        Clear-Host
                         select-printer
                         $global:side_pane.Show()
                         Refresh-Display
