@@ -13,6 +13,7 @@ huginn/VerboseUpdateLogger.psm1
 Huginn.cs
 Huginn.ps1
 src/app.ps1
+src/BarcodeGenerator.ps1
 src/BootStrapper.ps1
 src/Main.cs
 src/Materials.psm1
