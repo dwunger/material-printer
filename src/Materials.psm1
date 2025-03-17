@@ -386,7 +386,7 @@ class Material {
                 }
                 $this.expiration_string = "  Exp:{0}" -f ((($today).AddDays($this.stability_time)).ToString($DATE_FMT))
                 if ($this.instrument -eq "CS2500") {
-                    $this.expiration_string = "  Exp: $todays_date $todays_time"
+                    $this.expiration_string = "  Exp: {0} $todays_time" -f ((($today).AddDays($this.stability_time)).ToString($DATE_FMT))
                 }
             } else {
                 $label += "     Exp:`n"
