@@ -179,7 +179,7 @@ function Preprocess-OnlineCSV {
     return $content
 }
 
-function Process-MaterialGroupsLines {
+function Process-MaterialGroupsLines_old {
     param(
         [string[]]$lines,
         [ref]$MaterialGroupsByInstrument,
@@ -246,6 +246,79 @@ function Process-MaterialGroupsLines {
     return $true
 }
 
+function Process-MaterialGroupsLines {
+    param(
+        [string[]]$lines,
+        [ref]$MaterialGroupsByInstrument,
+        [string]$Delimiter = ";"
+    )
+
+    foreach ($line in $lines) {
+        Write-Debug "Processing line: $line"
+
+        # Skip empty lines
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+
+        # Get materials for this line
+        $_temp_material_group_list = getMaterials $line $Delimiter
+        if (-not $_temp_material_group_list) {
+            Write-Debug "Warning: No materials extracted from line: $line"
+            continue
+        }
+
+        # Split the line into fields using the specified delimiter
+        $fields = $line -split $Delimiter
+        $MATERIAL_GROUP = 0
+        $INSTRUMENT = 1
+
+        # Ensure the line has the expected number of fields
+        if ($fields.Length -lt 5) {
+            Write-Debug "Warning: Skipping line with insufficient fields: $line"
+            continue
+        }
+
+        # Extract the group name and instrument
+        $groupName = $fields[$MATERIAL_GROUP].Trim()
+        $instrument = $fields[$INSTRUMENT].Trim()
+
+        # Ensure there's an array for this instrument in the hashtable
+        if (-not $MaterialGroupsByInstrument.Value.ContainsKey($instrument)) {
+            $MaterialGroupsByInstrument.Value[$instrument] = @()
+        }
+
+        # Try to find an existing group with the same name
+        $existingGroup = $MaterialGroupsByInstrument.Value[$instrument] | Where-Object { $_.group_name -eq $groupName }
+
+        if ($existingGroup) {
+            # Merge new materials into the existing group
+            foreach ($material in $_temp_material_group_list) {
+                $existingGroup.AddMaterial($material)
+            }
+            Write-Debug "Merged materials into existing group: $groupName for instrument: $instrument"
+        }
+        else {
+            # Create a new group
+            $new_material_group = [MaterialGroup]::new()
+            $new_material_group.SetInstrument($instrument)
+            $new_material_group.SetGroupName($groupName)
+            foreach ($material in $_temp_material_group_list) {
+                $new_material_group.AddMaterial($material)
+            }
+            if ($new_material_group.IsValid()) {
+                $MaterialGroupsByInstrument.Value[$instrument] += $new_material_group
+                Write-Debug "Created new group: $groupName for instrument: $instrument"
+            } else {
+                Write-Debug "Warning: Skipping invalid group: $groupName"
+            }
+        }
+    }
+
+    return $true
+}
+
+
 function count() {
     param(
         [string] $haystack,
@@ -274,6 +347,9 @@ class Material {
     [string] $expiration_string
     [string] $remark_string_part_one # expiration criterion not met comment
     [string] $remark_string_part_two # expiration criterion not met comment
+
+    [string] $RawZPL
+
     Material() {
     }
 
@@ -309,6 +385,10 @@ class Material {
 
     [string] format_label($open_state) 
     {
+        if ($this.RawZPL) {
+            return $this.RawZPL
+        }
+
         #capture the open state
         $this.is_open = $open_state
 
@@ -420,6 +500,7 @@ class Material {
         $clone.expiration_string = $this.expiration_string
         $clone.remark_string_part_one = $this.remark_string_part_one
         $clone.remark_string_part_two = $this.remark_string_part_two
+        $clone.RawZPL = $this.RawZPL
 
         return $clone
     }
@@ -492,11 +573,12 @@ class MaterialGroup {
 }
 
 
-function getMaterials {
+function getMaterials_old {
     param ([string]$line)
     # Constants for field indices
     $MATERIAL_GROUP = 0
     $INSTRUMENT = 1
+    $EXPIRATION_TYPE = 3
 
     $_materials = @()
     $csv_list = ($line -split ";")
@@ -530,3 +612,78 @@ function getMaterials {
 }
 
 
+function getMaterials {
+    param ([string]$line)
+    # Constants for field indices
+    $MATERIAL_GROUP = 0
+    $INSTRUMENT = 1
+    $EXPIRATION_TYPE = 3
+
+    $_materials = @()
+    $csv_list = ($line -split ";")
+    $_material_group = $csv_list[$MATERIAL_GROUP]
+    $_instrument = $csv_list[$INSTRUMENT]
+    $_expiration_type = $csv_list[$EXPIRATION_TYPE]
+    
+    Write-Debug "Material group: $_material_group"
+    Write-Debug "Instrument: $_instrument"
+    Write-Debug "Expiration type: $_expiration_type"
+    
+    $reagent_names = ($csv_list[$REAGENT_NAMES] -split ",")
+    $stability_times = ($csv_list[$STABILITY_TIME] -split ",")
+
+    # Optionally, get the override field if present (assumed index 5)
+    $override = $null
+    if ($csv_list.Length -ge 6) {
+        $override = $csv_list[5].Trim()
+    }
+
+    # Attempt to parse the override if it exists and is in the expected format
+    $overrideParsed = $null
+    if ($override -and $override -match '^{override=(.+)}$') {
+        $jsonString = $matches[1]
+        try {
+            $overrideParsed = $jsonString | ConvertFrom-Json
+        } catch {
+            Write-Debug "Error parsing override JSON: $jsonString"
+        }
+    }
+    
+    # Loop through each reagent entry
+    for ($i = 0; $i -lt $reagent_names.Length; $i++) {
+        $_new_material = [Material]::new()
+        $_new_material.SetName($reagent_names[$i].Trim())
+        $_new_material.SetExpirationType($_expiration_type)
+        $_new_material.SetStabilityTime($stability_times[$i].Trim())
+        $_new_material.SetInstrument($_instrument)
+        
+        # If an override is parsed, assign it.
+        if ($overrideParsed) {
+            if ($overrideParsed -is [System.Collections.IEnumerable] -and -not ($overrideParsed -is [Hashtable])) {
+                # It's an array – if the counts match, assign per reagent.
+                if ($overrideParsed.Count -eq $reagent_names.Length) {
+                    $currentOverride = $overrideParsed[$i]
+                    if ($currentOverride.raw_zplii) {
+                        $_new_material.RawZPL = $currentOverride.raw_zplii
+                    }
+                } else {
+                    # Otherwise, fall back to the same override for all reagents.
+                    if ($overrideParsed.raw_zplii) {
+                        $_new_material.RawZPL = $overrideParsed.raw_zplii
+                    }
+                }
+            } elseif ($overrideParsed -is [Hashtable] -or $overrideParsed.PSObject -ne $null) {
+                # Single override object: assign to all reagents.
+                if ($overrideParsed.raw_zplii) {
+                    $_new_material.RawZPL = $overrideParsed.raw_zplii
+                }
+            }
+        }
+        
+        $_materials += $_new_material
+    }
+
+    Write-Debug "Parsed materials:"
+    $_materials | ForEach-Object { Write-Debug $_.name }
+    return $_materials
+}
