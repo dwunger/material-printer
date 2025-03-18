@@ -418,29 +418,58 @@ function SendToPrinter([Material]$mat1, [Material]$mat2) {
 
 $global:LabelQueue = @()
 
+function PrintRawLabel([Material] $material) {
+    $rawZpl = $material.RawZPL
+    try {
+        $tcpClient = New-Object System.Net.Sockets.TcpClient($global:PrinterIp, $global:PrinterPort)
+        $networkStream = $tcpClient.GetStream()
+        $bytes = [System.Text.Encoding]::ASCII.GetBytes($rawZpl)
+        $networkStream.Write($bytes, 0, $bytes.Length)
+        $global:side_pane.push_down("${BOLD}${GREEN_FG}Printed raw label: $($material.name)${RESET}")
+    }
+    catch {
+        Write-Host "Error sending raw label to printer: $_"
+    }
+    finally {
+        if ($networkStream) { $networkStream.Close() }
+        if ($tcpClient) { $tcpClient.Close() }
+    }
+}
+
 function print_label([Material] $material){
-    $_ = $material.format_label($global:is_open) # this captures global state and saves it for printing, regardless of whether we're using the output
     $material = $material.Clone()
+    
+    # If a raw override is provided, bypass formatting and print immediately.
+    if ($material.RawZPL) {
+        if ($global:LabelQueue.Count -gt 0) {
+            $global:LabelQueue = @()  # Clear the queue if something's pending.
+        }
+        if (-not $global:DISABLE_PRINT) {
+            PrintRawLabel $material
+        }
+        return  # Skip further processing.
+    }
+    
+    # Otherwise, run the standard formatting and enqueue.
+    $_ = $material.format_label($global:is_open)
     $global:LabelQueue += $material
     $global:side_pane.push_down("${BOLD}Enqueued: $($material.name) - ${RESET}$(&{open_helper2($material.is_open)})")
-    #$global:side_pane.push_down("Type of enqueued item: $($material.GetType().FullName)")
 
     if ($global:LabelQueue.Count -eq 2) {
         $global:QueuePending = $false 
         $mat1 = $global:LabelQueue[0]
         $mat2 = $global:LabelQueue[1]
         $global:side_pane.push_down("${BOLD}${GREEN_FG}Printing Queue!")
-        #$global:side_pane.push_down("Type of mat1: $($mat1.GetType().FullName)")
-        #$global:side_pane.push_down("Type of mat2: $($mat2.GetType().FullName)")
-
         if (-not $global:DISABLE_PRINT) {
             SendToPrinter $mat1 $mat2
         }
         $global:LabelQueue = @()
-    } else {
-        $global:QueuePending = $true # there's an item waiting in the queue that can be flushed
+    }
+    else {
+        $global:QueuePending = $true
     }
 }
+
 ###################################END PRINT LABEL SECTION##################################
 
 ###################################ELECTROLYTE LABELS#######################################
