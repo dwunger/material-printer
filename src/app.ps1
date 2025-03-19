@@ -15,21 +15,10 @@ $job = Start-Job -ScriptBlock {
     }
 } -ArgumentList $csvUrl
 
-#TODOs
-# Printer configuration setup file (IP address, print method (xylene/standard))
-# Add menu for printer configuration/selection
-# Display open status of reagents
-
-
-#BUGS
-# Pushing printer onto stack lags one cycle
-# Unmapped inputs cause an infinite display refresh loop - Appears to be fixed.
-
 #EXECUTION FLAGS
 # powershell -ExecutionPolicy Bypass -File .\qc_labels.ps1
 # Setting policy at runtime still fails to render some ANSI color codes. 
 # Can't use the debugger since the ISE console doesn't handle escape codes for cursor positioning (Why Microsoft?)
-# That might not even help anyway since the runtime links to .NET
 #######################################CONSTANTS##########################################
 $global:TEST_BUILD = 0
 $global:VERSION = Query-Parameter -File ".\MANIFEST" -Parameter "VERSION"
@@ -86,7 +75,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- Added BB Printers`n- Added BB phenotyping instructions`n- Added Downtime Barcode printer`n- Expiration bug fix for CS2500 materials`n- SP Thaw&Open $RIGHT_ARROW Thawed`n- Moved misc controls to [Help]`n- Hidden exploding duck animation"
+$STARTUP_LOGMSG = "- Added BB Printers`n- Added BB phenotyping instructions`n- Added Downtime Barcode printer`n- Expiration bug fix for CS2500 materials`n- SP Thaw&Open $RIGHT_ARROW Thawed`n- Moved misc controls to [Help]`n- Exploding duck animation [I]"
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 
 # Import-Module command with detailed parameter explanation
