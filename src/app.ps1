@@ -1032,35 +1032,38 @@ function Invoke-DuckAnimation {
 
 # Animate an explosion using math-based particle motion.
 function Invoke-AsciiExplosion {
-    # Get console dimensions and center point.
+    [Console]::CursorVisible = $false
     $width   = [System.Console]::WindowWidth
     $height  = [System.Console]::WindowHeight
     $centerX = [Math]::Floor($width / 2)
     $centerY = [Math]::Floor($height / 2)
 
-    # Initialize explosion particles with random angles, speeds, and color (red/orange hues).
-    $numParticles = 50
-    $colors = @("Red", "DarkYellow")
+    $numParticles = 100
+    $colors = @("Red", "DarkYellow", "Yellow")
+    $sizes  = @('*', 'o', '.')
+
     $particles = @()
     for ($i = 0; $i -lt $numParticles; $i++) {
         $angle = Get-Random -Minimum 0 -Maximum (2 * [Math]::PI)
-        $speed = Get-Random -Minimum 5 -Maximum 15  # characters per second
+        $speed = Get-Random -Minimum 5 -Maximum 15
+        $colorIndex = Get-Random -Minimum 0 -Maximum $colors.Count
+        $sizeIndex  = Get-Random -Minimum 0 -Maximum $sizes.Count
+
         $particles += [PSCustomObject]@{
             x     = $centerX
             y     = $centerY
             vx    = $speed * [Math]::Cos($angle)
             vy    = $speed * [Math]::Sin($angle)
-            color = $colors[(Get-Random -Minimum 0 -Maximum $colors.Count)]
+            color = $colors[$colorIndex]
+            char  = $sizes[$sizeIndex]
         }
     }
 
-    # Animate over 25 frames in 5 seconds with a slight gravity effect.
     $frames  = 25
     $dt      = 5.0 / $frames
     $gravity = 2.0
 
     for ($frame = 0; $frame -lt $frames; $frame++) {
-        # Update particle positions.
         foreach ($p in $particles) {
             $p.x += $p.vx * $dt
             $p.y += $p.vy * $dt
@@ -1069,20 +1072,20 @@ function Invoke-AsciiExplosion {
 
         Clear-Host
 
-        # Draw each particle if within screen bounds.
         foreach ($p in $particles) {
             $xi = [Math]::Round($p.x)
             $yi = [Math]::Round($p.y)
+
             if ($xi -ge 0 -and $xi -lt $width -and $yi -ge 0 -and $yi -lt $height) {
                 [System.Console]::SetCursorPosition($xi, $yi)
-                Write-Host "*" -ForegroundColor $p.color -NoNewline
+                Write-Host $p.char -ForegroundColor $p.color -NoNewline
             }
         }
         Start-Sleep -Seconds $dt
     }
     Clear-Host
+    [Console]::CursorVisible = $true
 }
-
 
 # Main function: Animate the duck crossing the screen, then trigger the explosion.
 function Invoke-DuckAndExplosion {
