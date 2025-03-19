@@ -46,6 +46,7 @@ $STABILITY_TIME = 4;
 
 
 $PrimaryDisplayHeight = 18
+$PrimaryDisplayMinWidth = 74
 #####################################END CONSTANTS#########################################
 Add-Type -AssemblyName System.Windows.Forms # For keycodes
 
@@ -650,7 +651,7 @@ function Select-Instrument {
         [array]$instrument_select_array,
         [Display]$display
     )
-    $display.setHeader(@("QC Material Label Printer".PadRight(71), "$global:open_status_message", "Select an instrument:"))
+    $display.setHeader(@("QC Material Label Printer".PadRight($PrimaryDisplayMinWidth), "$global:open_status_message", "Select an instrument:"))
     $menu = [Menu]::new($instrument_select_array, $display)
     $menu.DisplayMenu()
     $userKey = $global:Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
@@ -663,7 +664,7 @@ function Select-MaterialGroup {
         [array]$material_groups,
         [Display]$display
     )
-    $display.setHeader(@("QC Material Label Printer".PadRight(71), "$global:open_status_message", "Select a category:"))
+    $display.setHeader(@("QC Material Label Printer".PadRight($PrimaryDisplayMinWidth), "$global:open_status_message", "Select a category:"))
     $menu_array = $material_groups | ForEach-Object { $_.group_name }
     $menu = [Menu]::new($menu_array, $display)
     $menu.DisplayMenu()
@@ -678,7 +679,7 @@ function Select-Material {
         [Display]$display
     )
     #$display.setHeader(@(($GRAY_BG + $BLACK_FG + $UNDERLINE + ("$QC Material Label Printer".PadRight(40)) + $RESET_FMT), "$global:open_status_message", "Select a reagent to print:"))
-    $display.setHeader(@("QC Material Label Printer".PadRight(71), "$global:open_status_message", "Select a reagent to print:"))
+    $display.setHeader(@("QC Material Label Printer".PadRight($PrimaryDisplayMinWidth), "$global:open_status_message", "Select a reagent to print:"))
     $menu_array = $selected_group.materials_list | ForEach-Object { $_.name }
     $menu = [Menu]::new($menu_array, $display)
     $menu.DisplayMenu()
@@ -820,7 +821,7 @@ function select-printer() {
     # Main Interactive Menu/Print loop
     while ($true) {
 
-        $global:display.setHeader(@("QC Material Label Printer".PadRight(71), "", "Select a printer:"))
+        $global:display.setHeader(@("QC Material Label Printer".PadRight($PrimaryDisplayMinWidth), "", "Select a printer:"))
         #$global:display.setHeader(@((($GRAY_BG + $BLACK_FG + $UNDERLINE + ("$QC Material Label Printer".PadRight(71))) + $RESET_FMT), "", "Select a printer:"))
         $menu.DisplayMenu()
 
@@ -908,10 +909,10 @@ function Muginn-Old {
 
 function Muginn {
     $screen_height = 10
-    $screen_width = 71
+    $screen_width = $PrimaryDisplayMinWidth
 
     #Need to expand the console to fit muginn
-    Set-Window-Dimensions -width 112 -height (20 + $screen_height)
+    Set-Window-Dimensions -width 115 -height (20 + $screen_height)
     $Screen = [StackScreen]::new(0,$PrimaryDisplayHeight, $screen_width, $screen_height)
     $Screen.draw_border()
 
@@ -1088,11 +1089,11 @@ function main() {
 
     #Set-Window-Dimensions -width 69 -height 20 # Without side pane
     #Set-Window-Dimensions -width 105 -height 20 # With side pane
-    Set-Window-Dimensions -width 112 -height 20 # With side pane
+    Set-Window-Dimensions -width 115 -height (20 + $screen_height) # With side pane
     Clear-Host
 
     #$global:side_pane = [StackScreen]::new(67,0,34,18)
-    $global:side_pane = [StackScreen]::new(71,0,39,$PrimaryDisplayHeight)
+    $global:side_pane = [StackScreen]::new($PrimaryDisplayMinWidth,0,39,$PrimaryDisplayHeight)
 
     $global:side_pane.draw_border()
 
