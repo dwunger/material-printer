@@ -1030,37 +1030,50 @@ function Invoke-AsciiExplosion {
 
     $numParticles = 100
     $colors = @("Red", "DarkYellow", "Yellow")
-    $sizes  = @('*', 'o', '.')
+    $sizes  = @('*', 'o', '.', '@', '%', '&', '$', '~', ',')
 
     $particles = @()
     for ($i = 0; $i -lt $numParticles; $i++) {
         $angle = Get-Random -Minimum 0 -Maximum (2 * [Math]::PI)
-        $speed = Get-Random -Minimum 5 -Maximum 15
+        $speed = Get-Random -Minimum 5 -Maximum 20
         $colorIndex = Get-Random -Minimum 0 -Maximum $colors.Count
         $sizeIndex  = Get-Random -Minimum 0 -Maximum $sizes.Count
 
         $particles += [PSCustomObject]@{
-            x     = $centerX
-            y     = $centerY
-            vx    = $speed * [Math]::Cos($angle)
-            vy    = $speed * [Math]::Sin($angle)
-            color = $colors[$colorIndex]
-            char  = $sizes[$sizeIndex]
+            x      = $centerX
+            y      = $centerY
+            vx     = $speed * [Math]::Cos($angle)
+            vy     = $speed * [Math]::Sin($angle)
+            color  = $colors[$colorIndex]
+            char   = $sizes[$sizeIndex]
+            lastX  = $centerX
+            lastY  = $centerY
         }
     }
 
     $frames  = 25
     $dt      = 5.0 / $frames
-    $gravity = 2.0
+    $gravity = 3.0
 
     for ($frame = 0; $frame -lt $frames; $frame++) {
         foreach ($p in $particles) {
+            # Clear previous position
+            $lastXi = [Math]::Round($p.lastX)
+            $lastYi = [Math]::Round($p.lastY)
+
+            if ($lastXi -ge 0 -and $lastXi -lt $width -and $lastYi -ge 0 -and $lastYi -lt $height) {
+                [System.Console]::SetCursorPosition($lastXi, $lastYi)
+                Write-Host ' ' -NoNewline
+            }
+
+            # Update position
+            $p.lastX = $p.x
+            $p.lastY = $p.y
+
             $p.x += $p.vx * $dt
             $p.y += $p.vy * $dt
             $p.vy += $gravity * $dt
         }
-
-        Clear-Host
 
         foreach ($p in $particles) {
             $xi = [Math]::Round($p.x)
@@ -1071,10 +1084,23 @@ function Invoke-AsciiExplosion {
                 Write-Host $p.char -ForegroundColor $p.color -NoNewline
             }
         }
+
         Start-Sleep -Seconds $dt
     }
-    Clear-Host
+
+    # Final clear of particles
+    foreach ($p in $particles) {
+        $xi = [Math]::Round($p.x)
+        $yi = [Math]::Round($p.y)
+
+        if ($xi -ge 0 -and $xi -lt $width -and $yi -ge 0 -and $yi -lt $height) {
+            [System.Console]::SetCursorPosition($xi, $yi)
+            Write-Host ' ' -NoNewline
+        }
+    }
+
     [Console]::CursorVisible = $true
+    Clear-Host
 }
 
 # Main function: Animate the duck crossing the screen, then trigger the explosion.
