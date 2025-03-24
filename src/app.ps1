@@ -1309,7 +1309,8 @@ function main() {
                     }
                     "frogbog"
                     {
-                        Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\FrogBog.ps1"' -NoNewWindow
+                        Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -STA -File ".\src\FrogBog.ps1"' -NoNewWindow
+
                     }
            }
         }
