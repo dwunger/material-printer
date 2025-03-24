@@ -76,7 +76,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "-Added SFX to Frog Bog`n- Simple Atari Frog Bog port to`n  WinForms [g]`n- Added BB Printers`n- Added BB phenotyping instructions`n- Added Downtime Barcode printer`n- Expiration bug fix for CS2500 materials`n- SP Thaw&Open $RIGHT_ARROW Thawed`n- Moved misc controls to [Help]`n- Exploding duck animation [I]"
+$STARTUP_LOGMSG = "- Added SFX to Frog Bog`n- Simple Atari Frog Bog port to`n  WinForms [g]`n- Added BB Printers`n- Added BB phenotyping instructions`n- Added Downtime Barcode printer`n- Expiration bug fix for CS2500 materials`n- SP Thaw&Open $RIGHT_ARROW Thawed`n- Moved misc controls to [Help]`n- Exploding duck animation [I]"
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 
 # Import-Module command with detailed parameter explanation
