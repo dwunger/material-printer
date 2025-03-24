@@ -76,7 +76,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- Added BB Printers`n- Added BB phenotyping instructions`n- Added Downtime Barcode printer`n- Expiration bug fix for CS2500 materials`n- SP Thaw&Open $RIGHT_ARROW Thawed`n- Moved misc controls to [Help]`n- Exploding duck animation [I]"
+$STARTUP_LOGMSG = "- Simple Atari Frog Bog port to`n  WinForms [g]`n- Added BB Printers`n- Added BB phenotyping instructions`n- Added Downtime Barcode printer`n- Expiration bug fix for CS2500 materials`n- SP Thaw&Open $RIGHT_ARROW Thawed`n- Moved misc controls to [Help]`n- Exploding duck animation [I]"
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 
 # Import-Module command with detailed parameter explanation
@@ -779,6 +779,9 @@ function Handle-KeyInput {
     elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::B) {
         return "barcode"
     }
+    elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::G) {
+        return "frogbog"
+    }
     return "continue"
 }
 
@@ -797,6 +800,7 @@ function ayuda {
     $global:side_pane.push_down("$BOLD$CYAN_FG[p]$RESET_FMT  - Select printer")
     $global:side_pane.push_down("$BOLD$CYAN_FG[o]$RESET_FMT  - Toggle material open status")
     $global:side_pane.push_down("$BOLD$CYAN_FG[h]$RESET_FMT  - Show help output")
+    $global:side_pane.push_down("$BOLD$CYAN_FG[g]$RESET_FMT  - Launch Frog Bog")
     $global:side_pane.push_down("$BOLD$CYAN_FG[f]$RESET_FMT  - Flush printing queue")
     $global:side_pane.push_down("$BOLD$CYAN_FG[e]$RESET_FMT  - Print ISE Calibration labels")
     $global:side_pane.push_down("$BOLD$CYAN_FG[b]$RESET_FMT  - Printer Downtime Barcodes")
@@ -1302,6 +1306,10 @@ function main() {
                     "barcode"
                     {
                         Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\BarcodeGenerator.ps1"' -NoNewWindow
+                    }
+                    "frogbog"
+                    {
+                        Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\FrogBog.ps1"' -NoNewWindow
                     }
            }
         }
