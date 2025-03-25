@@ -1305,7 +1305,8 @@ function main() {
                     }
                     "help"
                     {
-                        ayuda
+                        ayuda # might removed this entirely. Undecided
+                        AdvancedHelp
                     }
                     "duck"
                     {
@@ -1323,9 +1324,7 @@ function main() {
                     }
                     "advancedhelp"
                     {
-                        
                         AdvancedHelp
-
                     }
            }
         }
