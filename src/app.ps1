@@ -76,7 +76,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- Added SFX to Frog Bog`n- Simple Atari Frog Bog port to`n  WinForms [g]`n- Added BB Printers`n- Added BB phenotyping instructions`n- Added Downtime Barcode printer`n- Expiration bug fix for CS2500 materials`n- SP Thaw&Open $RIGHT_ARROW Thawed`n- Moved misc controls to [Help]`n- Exploding duck animation [I]"
+$STARTUP_LOGMSG = "- Added Advanced Help option [?]`n- Added SFX to Frog Bog`n- Simple Atari Frog Bog port to`n  WinForms [g]`n- Added BB Printers`n- Added BB phenotyping instructions`n- Added Downtime Barcode printer`n- Expiration bug fix for CS2500 materials`n- SP Thaw&Open $RIGHT_ARROW Thawed`n- Moved misc controls to [Help]`n- Exploding duck animation [I]"
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 
 # Import-Module command with detailed parameter explanation
@@ -688,46 +688,6 @@ function Select-Material {
 }
 
 # Helper function to handle key input
-function Handle-KeyInput-Deprecated {
-    param (
-        [System.Management.Automation.Host.KeyInfo]$key
-    )
-    if ($key.VirtualKeyCode -eq 66 -or  # 'b' key
-        $key.VirtualKeyCode -eq 27 -or  # Escape key
-        $key.VirtualKeyCode -eq 37) {   # Left arrow key
-        return "back"
-    }
-    elseif ($key.VirtualKeyCode -eq 79) {   # 'o' key
-        return "toggle"
-    }
-    elseif ($key.VirtualKeyCode -eq 80) { # 'p' key
-        return "select-printer"
-    }
-    elseif ($key.VirtualKeyCode -eq 69) { # 'e' key - nice
-        return "electrolyte-labels"
-    }
-    elseif ($key.VirtualKeyCode -eq 68) { # 'd' key
-        return "debug"
-    }
-    elseif ($key.VirtualKeyCode -eq 70) { # 'f' key
-        return "flush-queue"
-    }
-    elseif ($key.VirtualKeyCode -eq 82) { # 'r' key
-        return "resource-config"
-    }
-    elseif ($key.VirtualKeyCode -eq 77) { # 'm' key
-        return "muginn"
-    }
-    elseif ($key.VirtualKeyCode -eq 85) { # 'u' key
-        return "update"
-    }
-    elseif ($key.VirtualKeyCode -eq 83) { # 's' key
-        return "snek"
-    }
-
-    return "continue"
-}
-
 function Handle-KeyInput {
     param (
         [System.Management.Automation.Host.KeyInfo]$key
@@ -781,6 +741,9 @@ function Handle-KeyInput {
     }
     elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::G) {
         return "frogbog"
+    }
+    elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::OemQuestion) {
+        return "advancedhelp"
     }
     return "continue"
 }
@@ -1114,6 +1077,52 @@ function Invoke-DuckAndExplosion {
     Invoke-AsciiExplosion
 }
 
+function AdvancedHelp {
+    # Get the full absolute path to the help file
+    $helpFilePath = (Resolve-Path ".\src\Help.html").Path
+    
+    # Create a temporary directory if it doesn't exist
+    $tempDir = Join-Path $env:TEMP "QCLabelPrinterHelp"
+    if (-not (Test-Path $tempDir)) {
+        New-Item -Path $tempDir -ItemType Directory -Force | Out-Null
+    }
+    
+    # Create a temporary file with a unique name
+    $tempFile = Join-Path $tempDir "Help_$(Get-Date -Format 'yyyyMMddHHmmss').html"
+    
+    # Read the help file content
+    $helpContent = Get-Content -Path $helpFilePath -Raw
+    
+    # Replace the version placeholder with the actual version
+    $helpContent = $helpContent -replace 'VERSION_PLACEHOLDER', $global:VERSION
+    
+    # Write the updated content to the temp file
+    $helpContent | Set-Content -Path $tempFile -Force
+    
+    try {
+        # Try using the default system handler to open the temp file
+        Invoke-Item $tempFile
+        $global:side_pane.push_down("Advanced help opened in browser.")
+        
+        # Optional: Schedule cleanup of temp file after some time
+        Start-Job -ScriptBlock {
+            param($file)
+            Start-Sleep -Seconds 300  # Wait 5 minutes
+            Remove-Item -Path $file -Force -ErrorAction SilentlyContinue
+        } -ArgumentList $tempFile | Out-Null
+    }
+    catch {
+        # Fallback method if Invoke-Item fails
+        $browser = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+        if (Test-Path $browser) {
+            Start-Process -FilePath $browser -ArgumentList "`"$tempFile`""
+            $global:side_pane.push_down("Advanced help opened in Edge browser.")
+        } else {
+            $global:side_pane.push_down("Failed to open help file. Please check the path: $tempFile")
+        }
+    }
+}
+
 
 function main() {
 
@@ -1310,6 +1319,12 @@ function main() {
                     "frogbog"
                     {
                         Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -STA -File ".\src\FrogBog.ps1"' -NoNewWindow
+
+                    }
+                    "advancedhelp"
+                    {
+                        
+                        AdvancedHelp
 
                     }
            }
