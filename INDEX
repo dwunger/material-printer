@@ -6,6 +6,7 @@ qclabelprinter.ico
 qclabelprinter1.ico
 qc_labels.ps1
 Update.ps1
+src/Help.html
 huginn/ScreenManager.psm1
 huginn/Update-Index.ps1
 huginn/utils.psm1
