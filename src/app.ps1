@@ -88,7 +88,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- Added Novus SG Well,`n  clean solution to`n  core lab section"
+$STARTUP_LOGMSG = "- Added Novus SG Well clean solution`n  to core lab materials"
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 
 # Import-Module command with detailed parameter explanation
