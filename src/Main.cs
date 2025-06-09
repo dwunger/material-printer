@@ -828,18 +828,36 @@ public class GameForm : Form
 
     private void RespawnEnemy(EnemySnake enemy)
     {
+        // 1. Drop all current segments as regular food of the enemy's color
+        foreach (var segment in enemy.Segments)
+        {
+            Food dropped = new Food {
+                Id        = nextFoodId++,
+                Position  = segment,
+                IsSpecial = false,
+                IsMagnetic= false,
+                IsBigHead = false,
+                FoodColor = enemy.BaseColor
+            };
+            foods.Add(dropped);
+        }
+
+        // 2. Now clear and respawn
         enemy.Segments.Clear();
         PointF p;
         do
         {
             p = GenerateRandomPositionInMap();
         }
-        while (playerSnake.Any(q => Distance(q, p) < 0.5f) || foods.Any(f => Distance(f.Position, p) < 0.5f));
+        while (playerSnake.Any(q => Distance(q, p) < 0.5f) ||
+               foods.Any(f => Distance(f.Position, p) < 0.5f));
         enemy.Segments.Add(p);
-        enemy.Score = enemy.Score / 2;
-        enemy.VX = 1f; enemy.VY = 0f;
+        enemy.Score      /= 2;
+        enemy.VX          = 1f;
+        enemy.VY          = 0f;
         enemy.MagnetTicks = 0;
     }
+
 
     void GenerateFoods()
     {
