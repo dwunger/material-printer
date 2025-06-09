@@ -632,43 +632,50 @@ public class GameForm : Form
             return;
         }
         playerSnake.Insert(0, newHead);
-        int foodIndex = foods.FindIndex(f => Distance(newHead, f.Position) < pickupThreshold * ((bigHeadTicks > 0) ? 5 : 1));
-        if (foodIndex != -1)
+        // --- Player eats food ---
+        float range = pickupThreshold * ((bigHeadTicks > 0) ? 5 : 1);
+        var eatenFoods = foods.Where(f => Distance(newHead, f.Position) < range).ToList();
+
+        if (eatenFoods.Any())
         {
-            Food eaten = foods[foodIndex];
-            if (eaten.IsMagnetic)
+            int totalSegments = 0;
+            foreach (var eaten in eatenFoods)
             {
-                playerScore = playerScore + 20;
-                PointF tail = playerSnake[playerSnake.Count - 1];
-                for (int i = 0; i < 3; i++) playerSnake.Add(tail);
-                playerMagnetTicks = 20;
+                // score & segment logic
+                if (eaten.IsMagnetic)
+                {
+                    playerScore += 20;
+                    totalSegments += 3;
+                    playerMagnetTicks = 20;
+                }
+                else if (eaten.IsBigHead)
+                {
+                    playerScore += 40;
+                    totalSegments += 4;
+                    bigHeadTicks = 150;
+                }
+                else if (eaten.IsSpecial)
+                {
+                    playerScore += 100;
+                    totalSegments += 30;
+                    superFoodTicks = 100;
+                }
+                else
+                {
+                    playerScore += 10;
+                }
+                foods.Remove(eaten);
             }
-            else if (eaten.IsBigHead)
-            {
-                playerScore = playerScore + 40;
-                PointF tail = playerSnake[playerSnake.Count - 1];
-                for (int i = 0; i < 4; i++) playerSnake.Add(tail);
-                bigHeadTicks = 150;
-            }
-            else if (eaten.IsSpecial)
-            {
-                playerScore = playerScore + 100;
-                PointF tail = playerSnake[playerSnake.Count - 1];
-                for (int i = 0; i < 30; i++) playerSnake.Add(tail);
-                superFoodTicks = 100;
-            }
-            else
-            {
-                playerScore = playerScore + 10;
-            }
-            foods.RemoveAt(foodIndex);
+            // grow snake by all eaten segments
+            PointF tail = playerSnake[playerSnake.Count - 1];
+            for (int i = 0; i < totalSegments; i++)
+                playerSnake.Add(tail);
         }
         else
         {
+            // no food, advance as usual
             playerSnake.RemoveAt(playerSnake.Count - 1);
         }
-        if (isBoosting && playerSnake.Count > 1)
-            playerSnake.RemoveAt(playerSnake.Count - 1);
 
         // --- Enemy Update ---
         if (foods.Count == 0) GenerateFoods();
