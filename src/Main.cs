@@ -675,6 +675,10 @@ public class GameForm : Form
         {
             // no food, advance as usual
             playerSnake.RemoveAt(playerSnake.Count - 1);
+            if (isBoosting && playerSnake.Count > 1)
+            {
+                playerSnake.RemoveAt(playerSnake.Count - 1);
+            }
         }
 
         // --- Enemy Update ---
