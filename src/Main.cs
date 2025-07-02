@@ -927,7 +927,7 @@ public class GameForm : Form
         return Color.FromArgb(r, g, b);
     }
 
-    private const int RenderSegmentCap = 15;
+    private const int RenderSegmentCap = 125;
 
     void DrawSnakeInterpolated(Graphics g, List<PointF> prevSnake, List<PointF> snake, Color baseColor, bool isPlayer, float alpha)
     {
