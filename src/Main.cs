@@ -883,9 +883,9 @@ public class GameForm : Form
             while (playerSnake.Any(p => Distance(p, newFood.Position) < 0.5f) ||
                    enemySnakes.Any(e => e.Segments.Any(p => Distance(p, newFood.Position) < 0.5f)) ||
                    foods.Any(f => Distance(f.Position, newFood.Position) < 0.5f));
-            double bigHeadChance = 0.020;
-            double magneticChance = 0.015;
-            double specialChance = 0.075;
+            double bigHeadChance = 0.025;
+            double magneticChance = 0.020;
+            double specialChance = 0.085;
             if (rand.NextDouble() < bigHeadChance)
             {
                 newFood.IsBigHead = true;
@@ -929,13 +929,19 @@ public class GameForm : Form
 
     private const int RenderSegmentCap = 125;
 
+
     void DrawSnakeInterpolated(Graphics g, List<PointF> prevSnake, List<PointF> snake, Color baseColor, bool isPlayer, float alpha)
     {
         if (snake == null || snake.Count == 0) return;
 
-        // only interpolate up to the render cap
         int renderCount = Math.Min(snake.Count, RenderSegmentCap);
 
+        // ultra-ultra-slow growth past the cap (10th-root)
+        float lengthScale = snake.Count > RenderSegmentCap
+            ? (float)Math.Pow((double)snake.Count / RenderSegmentCap, 0.1)
+            : 1f;
+
+        // build interpolated positions
         List<PointF> interp = new List<PointF>(renderCount);
         for (int i = 0; i < renderCount; i++)
         {
@@ -944,8 +950,10 @@ public class GameForm : Form
             interp.Add(Lerp(from, to, alpha));
         }
 
-        float headRadius = cellSize * 0.8f;
-        float tailRadius = cellSize * 0.4f;
+        // apply uniform scale
+        float headRadius = cellSize * 0.8f * lengthScale;
+        float tailRadius = cellSize * 0.4f * lengthScale;
+
         Color headColor = (isPlayer && superFoodTicks > 0)
             ? GetRainbowColor(rainbowPhase)
             : (isPlayer ? playerBaseColor : baseColor);
@@ -955,7 +963,6 @@ public class GameForm : Form
 
         for (int i = 0; i < renderCount; i++)
         {
-            // interpolate radius based on renderCount, not total snake.Count
             float t = (snake.Count > 1) ? (float)i / (snake.Count - 1) : 0f;
             float radius = headRadius * (1 - t) + tailRadius * t;
 
@@ -970,7 +977,7 @@ public class GameForm : Form
             float cx = interp[i].X * cellSize + cellSize / 2f;
             float cy = interp[i].Y * cellSize + cellSize / 2f;
 
-            // draw glow for player
+            // player glow
             if (isPlayer)
             {
                 using (GraphicsPath glowPath = CreateGlowPath(new PointF(cx, cy), radius, radius * 1.5f))
@@ -983,9 +990,10 @@ public class GameForm : Form
                 }
             }
 
-            // draw segment circle
+            // draw segment
             RectangleF nodeRect = new RectangleF(cx - radius, cy - radius, radius * 2, radius * 2);
-            using (PathGradientBrush innerGlow = new PathGradientBrush(new[] {
+            using (PathGradientBrush innerGlow = new PathGradientBrush(new[]
+            {
                 new PointF(cx - radius, cy - radius),
                 new PointF(cx + radius, cy - radius),
                 new PointF(cx + radius, cy + radius),
@@ -996,31 +1004,33 @@ public class GameForm : Form
                 innerGlow.SurroundColors = new[] { Color.FromArgb(0, 255, 255, 255) };
                 g.FillEllipse(innerGlow, nodeRect);
             }
-            using (SolidBrush brush = new SolidBrush(nodeColor))   g.FillEllipse(brush, nodeRect);
-            using (Pen pen       = new Pen(Color.FromArgb(100, Color.White), 2)) g.DrawEllipse(pen, nodeRect);
+            using (SolidBrush brush = new SolidBrush(nodeColor))
+                g.FillEllipse(brush, nodeRect);
+            using (Pen pen = new Pen(Color.FromArgb(100, Color.White), 2))
+                g.DrawEllipse(pen, nodeRect);
 
-            // player eyes & hat
-            if (i == 0 && isPlayer)
+            // player eyes and hat
+            if (isPlayer && i == 0)
             {
-                float eyeR   = radius * 0.3f;
-                float pupilR= eyeR * 0.5f;
-                DrawShinyEye(g, new PointF(cx - radius*0.4f, cy - radius*0.4f), eyeR, pupilR);
-                DrawShinyEye(g, new PointF(cx + radius*0.4f, cy - radius*0.4f), eyeR, pupilR);
+                float eyeR = radius * 0.3f;
+                float pupilR = eyeR * 0.5f;
+                DrawShinyEye(g, new PointF(cx - radius * 0.4f, cy - radius * 0.4f), eyeR, pupilR);
+                DrawShinyEye(g, new PointF(cx + radius * 0.4f, cy - radius * 0.4f), eyeR, pupilR);
 
-                var hatL = new PointF(cx - radius*0.6f, cy - radius);
-                var hatR = new PointF(cx + radius*0.6f, cy - radius);
-                var hatT = new PointF(cx, cy - radius - radius*1.5f);
-                using (var brush = new LinearGradientBrush(
+                var hatL = new PointF(cx - radius * 0.6f, cy - radius);
+                var hatR = new PointF(cx + radius * 0.6f, cy - radius);
+                var hatT = new PointF(cx, cy - radius - radius * 1.5f);
+                using (var brush2 = new LinearGradientBrush(
                     Point.Round(hatL), Point.Round(hatR),
                     GetRainbowColor(rainbowPhase + 0.2f),
                     GetRainbowColor(rainbowPhase + 0.7f)))
                 {
-                    g.FillPolygon(brush, new[]{ hatL, hatT, hatR });
-                    g.DrawPolygon(new Pen(Color.FromArgb(100, Color.White),2), new[]{ hatL, hatT, hatR });
+                    g.FillPolygon(brush2, new[] { hatL, hatT, hatR });
+                    g.DrawPolygon(new Pen(Color.FromArgb(100, Color.White), 2), new[] { hatL, hatT, hatR });
                 }
             }
 
-            // draw connecting capsule to next segment
+            // connecting capsule
             if (i < renderCount - 1)
             {
                 float tNext = (float)(i + 1) / (renderCount - 1);
@@ -1028,7 +1038,8 @@ public class GameForm : Form
                 Color nextColor = InterpolateColor(headColor, tailColor, tNext);
 
                 var p1 = new PointF(cx, cy);
-                var p2 = new PointF(interp[i+1].X*cellSize + cellSize/2f, interp[i+1].Y*cellSize + cellSize/2f);
+                var p2 = new PointF(interp[i + 1].X * cellSize + cellSize / 2f,
+                                     interp[i + 1].Y * cellSize + cellSize / 2f);
                 float dx = p2.X - p1.X, dy = p2.Y - p1.Y;
                 float angle = (float)Math.Atan2(dy, dx);
 
@@ -1036,20 +1047,24 @@ public class GameForm : Form
                 var off2 = new PointF(nextR * (float)Math.Sin(angle), -nextR * (float)Math.Cos(angle));
                 using (var path = new GraphicsPath())
                 {
-                    path.AddPolygon(new[]{
+                    path.AddPolygon(new[]
+                    {
                         new PointF(p1.X - off1.X, p1.Y - off1.Y),
                         new PointF(p2.X - off2.X, p2.Y - off2.Y),
                         new PointF(p2.X + off2.X, p2.Y + off2.Y),
                         new PointF(p1.X + off1.X, p1.Y + off1.Y)
                     });
                     g.FillPath(
-                        new SolidBrush(Math.Abs(dx)<0.001f && Math.Abs(dy)<0.001f ? nodeColor : InterpolateColor(nodeColor,nextColor,0.5f)),
-                        path
-                    );
+                        new SolidBrush((Math.Abs(dx) < 0.001f && Math.Abs(dy) < 0.001f)
+                            ? nodeColor
+                            : InterpolateColor(nodeColor, nextColor, 0.5f)),
+                        path);
                 }
             }
         }
     }
+
+
 
 
     protected override void OnPaint(PaintEventArgs e)
