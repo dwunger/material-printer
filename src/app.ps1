@@ -88,7 +88,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- Added Specialty IA Plus Controls`n- Enemy snakes drop food on death`n- Changed food pickup logic`n- Added Novus SG Well clean solution`n  to core lab materials"
+$STARTUP_LOGMSG = "-Late game growth curve and spawn `n  rate tweaks`n- Added Specialty IA Plus Controls`n- Enemy snakes drop food on death`n- Changed food pickup logic`n- Added Novus SG Well clean solution`n  to core lab materials"
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 
 # Import-Module command with detailed parameter explanation
