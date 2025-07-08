@@ -373,6 +373,7 @@ public class GameForm : Form
         public PointF Position;
         public bool IsSpecial;
         public bool IsMagnetic;
+        public bool IsLongMagnetic;
         public bool IsBigHead;
         public Color FoodColor;
     }
@@ -642,7 +643,13 @@ public class GameForm : Form
             foreach (var eaten in eatenFoods)
             {
                 // score & segment logic
-                if (eaten.IsMagnetic)
+                if (eaten.IsLongMagnetic)
+                {
+                    playerScore += 20;
+                    totalSegments += 3;
+                    playerMagnetTicks = 100;
+                }
+                else if (eaten.IsMagnetic)
                 {
                     playerScore += 20;
                     totalSegments += 3;
@@ -875,7 +882,7 @@ public class GameForm : Form
         int count = 10;
         for (int i = 0; i < count; i++)
         {
-            Food newFood;
+            Food newFood = new Food();
             do
             {
                 newFood.Position = GenerateRandomPositionInMap();
@@ -886,12 +893,22 @@ public class GameForm : Form
             double bigHeadChance = 0.025;
             double magneticChance = 0.020;
             double specialChance = 0.085;
+            double longMagneticChance = 0.01;
+
             if (rand.NextDouble() < bigHeadChance)
             {
                 newFood.IsBigHead = true;
                 newFood.IsSpecial = false;
                 newFood.IsMagnetic = false;
                 newFood.FoodColor = Color.Empty;
+            }
+            else if (rand.NextDouble() < longMagneticChance) 
+            {
+                newFood.IsLongMagnetic = true;
+                newFood.IsMagnetic = false;
+                newFood.IsSpecial = false;
+                newFood.IsBigHead  = false;
+                newFood.FoodColor  = Color.Black;
             }
             else if (rand.NextDouble() < magneticChance)
             {
