@@ -1165,6 +1165,27 @@ public class GameForm : Form
                 using (SolidBrush brush = new SolidBrush(oscillatingColor))
                     g.FillEllipse(brush, foodRect);
             }
+            else if (food.IsLongMagnetic)
+            {
+                // ------------------------
+                // Black-&-White pulsing
+                // ------------------------
+                // animationPhase is already incremented in UpdateGame()
+                float pulse = (float)(Math.Sin(animationPhase * 2f) * 0.5 + 0.5);
+                int c   = (int)(pulse * 255);
+                Color bw = Color.FromArgb(c, c, c);
+
+                float size = cellSize * 1.8f;
+                RectangleF rect = new RectangleF(
+                    cx - size/2, 
+                    cy - size/2, 
+                    size, 
+                    size
+                );
+
+                using (var brush = new SolidBrush(bw))
+                    g.FillEllipse(brush, rect);
+            }
             else
             {
                 RectangleF foodRect = new RectangleF(interpolated.X * cellSize, interpolated.Y * cellSize, cellSize, cellSize);
