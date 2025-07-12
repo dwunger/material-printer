@@ -88,7 +88,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- Added Neodymium Magnet Food`n- Late game growth curve and spawn `n  rate tweaks`n- Added Specialty IA Plus Controls`n- Enemy snakes drop food on death`n- Changed food pickup logic`n- Added Novus SG Well clean solution`n  to core lab materials"
+$STARTUP_LOGMSG = "- Added image printing`n- Added Neodymium Magnet Food`n- Late game growth curve and spawn `n  rate tweaks`n- Added Specialty IA Plus Controls`n- Enemy snakes drop food on death`n- Changed food pickup logic`n- Added Novus SG Well clean solution`n  to core lab materials"
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 
 # Import-Module command with detailed parameter explanation
@@ -742,6 +742,9 @@ function Handle-KeyInput {
     elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::F5) {
         return "reload"
     }
+    elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::X) {
+        return "pepe"
+    }
     elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::H) {
         return "help"
     }
@@ -1337,6 +1340,11 @@ function main() {
                     "advancedhelp"
                     {
                         AdvancedHelp
+                    }
+                    "pepe"
+                    {
+                        powershell.exe -NoProfile -File .\src\ImagePrint.ps1 -PrinterIp $global:printerIp
+
                     }
            }
         }
