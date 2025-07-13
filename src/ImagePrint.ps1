@@ -75,7 +75,7 @@ $bmp.Dispose()
 $asm      = [Reflection.Assembly]::LoadWithPartialName('System')
 $tcpType  = $asm.GetType('System.Net.Sockets.TcpClient')
 $ctor     = $tcpType.GetConstructor([Type[]]@([string], [int]))
-$client   = $ctor.Invoke(@("PRT001065", 9100))
+$client   = $ctor.Invoke(@($PrinterIp, 9100))
 
 # get network stream
 $getStr   = $tcpType.GetMethod('GetStream', [Type[]]@())
