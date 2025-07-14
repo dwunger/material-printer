@@ -1139,218 +1139,135 @@ function AdvancedHelp {
 }
 
 
-function main() {
+function main {
+    # initialize per-level cursor history: 0=instrument, 1=group, 2=material
+    $global:last_selected_index = @(0, 0, 0)
 
-    #Set-Window-Dimensions -width 69 -height 20 # Without side pane
-    #Set-Window-Dimensions -width 105 -height 20 # With side pane
-    Set-Window-Dimensions -width 115 -height (20 + $screen_height) # With side pane
+    # set up layout
+    Set-Window-Dimensions -width 115 -height (20 + $screen_height)
     Clear-Host
 
-    #$global:side_pane = [StackScreen]::new(67,0,34,18)
-    $global:side_pane = [StackScreen]::new($PrimaryDisplayMinWidth,0,39,$PrimaryDisplayHeight)
-
+    # side pane
+    $global:side_pane = [StackScreen]::new($PrimaryDisplayMinWidth, 0, 39, $PrimaryDisplayHeight)
     $global:side_pane.draw_border()
-
     $global:side_pane.push_down("Local version: " + $global:VERSION)
     $global:side_pane.push_down($YELLOW_FG + $STARTUP_LOGMSG)
 
-
+    # printer init
     $global:startup = $true
     $printerManager = [PrinterManager]::new("./src/printer_config.csv")
     $global:printerIp = $printerManager.DefaultPrinterIp
 
-    # Wait for the remote CSV fetch to complete
+    # wait for remote CSV
     $remoteContent = Receive-Job -Job $global:job -Wait -AutoRemoveJob
-
     $materialGroupsByInstrument = Setup-MaterialGroups-Async -RemoteContent $remoteContent
-    if ($null -eq $materialGroupsByInstrument) {
-        Write-Host "Failed to initialize material groups. Exiting."
-        return 1
-    }
+    if ($null -eq $materialGroupsByInstrument) { Write-Host "Failed to initialize material groups. Exiting."; return 1 }
 
+    # menu state
+    $global:menu_level            = $INSTRUMENT_SELECT
+    $instrument_select_array      = $materialGroupsByInstrument.Keys | Sort-Object
 
-    $global:menu_level = $INSTRUMENT_SELECT
-    $instrument_select_array = $materialGroupsByInstrument.Keys | Sort-Object
-
+    # footer controls
     $global:display = [Display]::new($PrimaryDisplayHeight)
-    $menu_controls = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select";
-    $state_controls= "P - Change printer | E - ISE Labels | F - flush print queue | H - Help";
-
+    $menu_controls  = "Menu Controls: $LEFT_ARROW - Back | $DOWN_ARROW - Down | $UP_ARROW - Up | $RIGHT_ARROW or [Enter] - Select"
+    $state_controls = "P - Change printer | E - ISE Labels | F - flush print queue | H - Help"
     $global:display.setFooter(@("", $menu_controls, $state_controls, $global:VERSION))
 
+    # track selections per level
     $instrument_menu_selection = 0
-    $selected_group_index = 0
-    $selected_material_index = 0
+    $selected_group_index      = 0
+    $selected_material_index   = 0
 
-    # Interactive menu loop
-    while ($true) 
-    {
-
-        # Unlock open status at menu root
-        if ((($selected_instrument -eq "CS2500") -or ($selected_instrument -eq "Core Lab")) -and ($global:menu_level -eq $INSTRUMENT_SELECT)) {
-            $TOGGLE_ENABLED = $true
-        }
-
-        # Lock open status to `open` for CS2500 items
-        if ((($selected_instrument -eq "CS2500")  -or ($selected_instrument -eq "Core Lab")) -and (-not $global:is_open)) {
-            $global:is_open = (-not $global:is_open)
-            $TOGGLE_ENABLED = $false
-        } else {
-            $TOGGLE_ENABLED = $true
-        }
-
+    # interactive loop
+    while ($true) {
+        # update open status message
         $global:open_status_message = open-status-helper
-
-
 
         switch ($global:menu_level) {
             $INSTRUMENT_SELECT {
-                $selectedItem = Select-Instrument -instrument_select_array $instrument_select_array -display $global:display
-                if ($selectedItem -ge $INSTRUMENT_SELECT) {
-                    $instrument_menu_selection = $selectedItem
-                    $global:menu_level = $MATERIAL_GROUP_SELECT
-                }
-                Lock-CS2500-Open-Status
+                # restore last cursor
+                $global:display.setHeader(@("QC Material Label Printer".PadRight($PrimaryDisplayMinWidth), $global:open_status_message, "Select an instrument:"))
+                $menu = [Menu]::new($instrument_select_array, $global:display)
+                $menu.selectedItem = $global:last_selected_index[$INSTRUMENT_SELECT]
+                $menu.DisplayMenu()
+                $key = $global:Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+                $selectedItem = $menu.GetUserInput($key)
 
+                if ($selectedItem -ge 0) {
+                    $instrument_menu_selection = $selectedItem
+                    $global:menu_level         = $MATERIAL_GROUP_SELECT
+                }
+                $global:last_selected_index[$INSTRUMENT_SELECT] = $selectedItem
+                Lock-CS2500-Open-Status
             }
             $MATERIAL_GROUP_SELECT {
                 $selected_instrument = $instrument_select_array[$instrument_menu_selection]
+                $material_groups     = $materialGroupsByInstrument[$selected_instrument]
 
-                $material_groups = $materialGroupsByInstrument[$selected_instrument]
-                $selectedItem = Select-MaterialGroup -material_groups $material_groups -display $global:display
-                if ($selectedItem -ge $INSTRUMENT_SELECT) {
+                $global:display.setHeader(@("QC Material Label Printer".PadRight($PrimaryDisplayMinWidth), $global:open_status_message, "Select a category:"))
+                $menu = [Menu]::new($material_groups.group_name, $global:display)
+                $menu.selectedItem = $global:last_selected_index[$MATERIAL_GROUP_SELECT]
+                $menu.DisplayMenu()
+                $key = $global:Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+                $selectedItem = $menu.GetUserInput($key)
+
+                if ($selectedItem -ge 0) {
                     $selected_group_index = $selectedItem
-                    $global:menu_level = $MATERIAL_SELECT
+                    $global:menu_level    = $MATERIAL_SELECT
                 }
+                $global:last_selected_index[$MATERIAL_GROUP_SELECT] = $selectedItem
                 Lock-CS2500-Open-Status
             }
             $MATERIAL_SELECT {
                 $selected_instrument = $instrument_select_array[$instrument_menu_selection]
-                $selected_group = $materialGroupsByInstrument[$selected_instrument][$selected_group_index]
-                $selectedItem = Select-Material -selected_group $selected_group -display $global:display
-                if ($selectedItem -ge $INSTRUMENT_SELECT) {
-                    $selected_material_index = $selectedItem
-                    $selected_material = $selected_group.materials_list[$selected_material_index]
-                    print_label -material $selected_material
-                    #Write-Error -Message $selected_material
-                    #Write-Host "Selected material: $($selected_material.name)"
-                    #$global:side_pane.push_down("${BOLD}Printed: $($selected_material.name) - ${RESET}$(&{open_helper})")
-                }
-                Lock-CS2500-Open-Status
+                $selected_group      = $materialGroupsByInstrument[$selected_instrument][$selected_group_index]
 
+                $global:display.setHeader(@("QC Material Label Printer".PadRight($PrimaryDisplayMinWidth), $global:open_status_message, "Select a reagent to print:"))
+                $menu = [Menu]::new($selected_group.materials_list.name, $global:display)
+                $menu.selectedItem = $global:last_selected_index[$MATERIAL_SELECT]
+                $menu.DisplayMenu()
+                $key = $global:Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+                $selectedItem = $menu.GetUserInput($key)
+
+                if ($selectedItem -ge 0) {
+                    $selected_material_index = $selectedItem
+                    print_label -material $selected_group.materials_list[$selected_material_index]
+                }
+                $global:last_selected_index[$MATERIAL_SELECT] = $selectedItem
+                Lock-CS2500-Open-Status
             }
         }
 
-        # User supplied an input with no mapping above. Let this fall through so it's not lost
-        if ($global:LastUnprocessedKeystroke) 
-        {
-            $key = $global:LastUnprocessedKeystroke
+        # handle unmapped keystrokes
+        if ($global:LastUnprocessedKeystroke) {
+            $key    = $global:LastUnprocessedKeystroke
             $global:LastUnprocessedKeystroke = $null
             $action = Handle-KeyInput -key $key
-
-            switch ($action) 
-            {
-                    "back" 
-                    {
-                        if ($global:menu_level -gt $INSTRUMENT_SELECT) { $global:menu_level-- }
-                    }
-                    "toggle" 
-                    {
-                        if ($TOGGLE_ENABLED) { $global:is_open = (-not $global:is_open) }
-                    }
-                    "select-printer" 
-                    {
-                        $global:side_pane.Hide()
-                        Clear-Host
-                        select-printer
-                        $global:side_pane.Show()
-                        Refresh-Display
-                    }
-                    "electrolyte-labels" 
-                    {
-                        $global:side_pane.Hide()
-                        electrolyte-labels
-                        $global:side_pane.Show()
-                        Refresh-Display
-                    }
-                    "flush-queue" 
-                    {
-                        if ($global:QueuePending) {
-                            flush-queue($selected_material)
-                        }
-                    }
-                    "resource-config" 
-                    {
-                        $browser = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
-                        $link = 'https://docs.google.com/spreadsheets/d/15leQ_Hy9kxP_PmoBwOqyDEln9Vvy5Bpilqm4LrJ56lE/edit?usp=sharing'
-                        if (Test-Path $browser) {
-                            $global:side_pane.push_down("Launching Edge...")
-                            & $browser $link # Requires the invocation operator
-                        } else {
-                            $global:side_pane.push_down("[ERROR] Browser unavailable.")
-                        }
-                    }
-                    "muginn" 
-                    {
-                        Muginn
-                    }
-                    "update"
-                    {
-                        powershell.exe -ExecutionPolicy Bypass -File .\Huginn.ps1
-                        Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\app.ps1"' -NoNewWindow
-                        exit
-                    }
-                    "snek"
-                    {
-                        Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\BootStrapper.ps1" 2> error.txt' -NoNewWindow -Wait
-                     }
-                    "cmd"
-                    {
-                        Start-Process powershell_ise.exe '.\src\app.ps1'
-                        Start-Process powershell.exe
-                     }
-                    "debug"
-                    {
-                        $host.EnterNestedPrompt()
-                    }
-                    "reload"
-                    {
-                        Start-Process conhost.exe -ArgumentList 'powershell -ExecutionPolicy Bypass -File ".\src\app.ps1"'
-                        return 0
-                    }
-                    "help"
-                    {
-                        ayuda # might removed this entirely. Undecided
-                        AdvancedHelp
-                    }
-                    "duck"
-                    {
-                        Invoke-DuckAndExplosion
-                        Refresh-Display
-                    }
-                    "barcode"
-                    {
-                        Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\BarcodeGenerator.ps1"' -NoNewWindow
-                    }
-                    "frogbog"
-                    {
-                        Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -STA -File ".\src\FrogBog.ps1"' -NoNewWindow
-
-                    }
-                    "advancedhelp"
-                    {
-                        AdvancedHelp
-                    }
-                    "pepe"
-                    {
-                        powershell.exe -NoProfile -File .\src\ImagePrint.ps1 -PrinterIp $global:printerIp
-
-                    }
-           }
+            switch ($action) {
+                'back'            { if ($global:menu_level -gt $INSTRUMENT_SELECT) { $global:menu_level-- } }
+                'toggle'          { if ($TOGGLE_ENABLED) { $global:is_open = -not $global:is_open } }
+                'select-printer'  { $global:side_pane.Hide(); Clear-Host; select-printer; $global:side_pane.Show(); Refresh-Display }
+                'electrolyte-labels' { $global:side_pane.Hide(); electrolyte-labels; $global:side_pane.Show(); Refresh-Display }
+                'flush-queue'     { if ($global:QueuePending) { flush-queue($null) } }
+                'resource-config' { Launch-ResourceConfig }
+                'muginn'          { Muginn }
+                'update'          { Update-App; return }
+                'snek'            { Start-Snek }
+                'cmd'             { Start-ISE }
+                'debug'           { $host.EnterNestedPrompt() }
+                'reload'          { Reload-App; return }
+                'help'            { ayuda; AdvancedHelp }
+                'duck'            { Invoke-DuckAndExplosion; Refresh-Display }
+                'barcode'         { Launch-BarcodeGen }
+                'frogbog'         { Launch-FrogBog }
+                'advancedhelp'    { AdvancedHelp }
+                'pepe'            { Launch-ImagePrint }
+            }
         }
     }
     return 0
 }
+
 main
 
 #https://www.zebra.com/content/dam/support-dam/en/documentation/unrestricted/guide/product/tlp2824plus-ug-en.pdf
