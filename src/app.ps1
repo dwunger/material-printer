@@ -89,7 +89,10 @@ if ($DISABLE_PRINT){
 } 
 
 $STARTUP_LOGMSG = "- Added special clean labels`n- Now tracking cursor index at`n  each menu level`n- Added Specialty IA Plus Controls"
-$STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
+
+# prepend the orange alert, then color the body bright yellow
+$STARTUP_LOGMSG = "${ESC}[38;5;208mAlert: If cursor arrow is hidden`n${ESC}[38;5;208mArrow Up/Down to reveal`n$YELLOW_FG" +
+    ($STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG")
 
 # Import-Module command with detailed parameter explanation
 
