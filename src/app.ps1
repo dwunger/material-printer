@@ -91,7 +91,7 @@ if ($DISABLE_PRINT){
 $STARTUP_LOGMSG = "- Cursor tracking bug fix`n- Added special clean labels`n- Now tracking cursor index at`n  each menu level`n- Added Specialty IA Plus Controls"
 
 # prepend the orange alert, then color the body bright yellow
-$STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
+$STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$CYAN_FG"
 
 # Import-Module command with detailed parameter explanation
 
