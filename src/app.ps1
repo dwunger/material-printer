@@ -1153,7 +1153,7 @@ function main {
     $global:side_pane = [StackScreen]::new($PrimaryDisplayMinWidth, 0, 39, $PrimaryDisplayHeight)
     $global:side_pane.draw_border()
     $global:side_pane.push_down("Local version: " + $global:VERSION)
-    $global:side_pane.push_down($YELLOW_FG + $STARTUP_LOGMSG)
+    $global:side_pane.push_down($CYAN_FG + $STARTUP_LOGMSG)
 
     # printer init
     $global:startup = $true
