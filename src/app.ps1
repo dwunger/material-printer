@@ -88,7 +88,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- Cursor tracking bug fix`n- Added special clean labels`n- Now tracking cursor index at`n  each menu level`n- Added Specialty IA Plus Controls"
+$STARTUP_LOGMSG = "- Open status lock bug fix`n- Added special clean labels`n- Now tracking cursor index at`n  each menu level`n- Added Specialty IA Plus Controls"
 
 # prepend the orange alert, then color the body bright yellow
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$CYAN_FG"
@@ -1185,8 +1185,18 @@ function main {
 
     # interactive loop
     while ($true) {
-        # update open status
-        # update open status
+        # unlock open toggle at root for CS2500/Core Lab
+        if ((($instrument_select_array[$instrument_menu_selection] -eq "CS2500") -or ($instrument_select_array[$instrument_menu_selection] -eq "Core Lab")) -and ($global:menu_level -eq $INSTRUMENT_SELECT)) {
+            $TOGGLE_ENABLED = $true
+        }
+        # force open and lock toggle for CS2500 group/material levels
+        if ((($global:menu_level -ne $INSTRUMENT_SELECT) -and (($instrument_select_array[$instrument_menu_selection] -eq "CS2500") -or ($instrument_select_array[$instrument_menu_selection] -eq "Core Lab"))) -and (-not $global:is_open)) {
+            $global:is_open     = $true
+            $TOGGLE_ENABLED     = $false
+        } else {
+            $TOGGLE_ENABLED = $true
+        }
+
         # update open status
         $global:open_status_message = open-status-helper
 
