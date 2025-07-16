@@ -91,8 +91,7 @@ if ($DISABLE_PRINT){
 $STARTUP_LOGMSG = "- Added special clean labels`n- Now tracking cursor index at`n  each menu level`n- Added Specialty IA Plus Controls"
 
 # prepend the orange alert, then color the body bright yellow
-$STARTUP_LOGMSG = "${ESC}[38;5;208mAlert: If cursor arrow is hidden`n${ESC}[38;5;208mArrow Up/Down to reveal`n$YELLOW_FG" +
-    ($STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG")
+$STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$YELLOW_FG"
 
 # Import-Module command with detailed parameter explanation
 
@@ -1187,44 +1186,61 @@ function main {
     # interactive loop
     while ($true) {
         # update open status
+        # update open status
+        # update open status
         $global:open_status_message = open-status-helper
 
         switch ($global:menu_level) {
             $INSTRUMENT_SELECT {
-                # restore cursor
-                $global:last_selected_item = $global:last_selected_index[$INSTRUMENT_SELECT]
-                $selectedItem = Select-Instrument -instrument_select_array $instrument_select_array -display $global:display
-                if ($selectedItem -ge 0) {
-                    $instrument_menu_selection = $selectedItem
+                # header for instrument
+                $global:display.setHeader(@("QC Material Label Printer".PadRight($PrimaryDisplayMinWidth), $global:open_status_message, "Select an instrument:"))
+                # restore previous cursor
+                $menu = [Menu]::new($instrument_select_array, $global:display)
+                $menu.selectedItem = $global:last_selected_index[$INSTRUMENT_SELECT]
+                $menu.DisplayMenu()
+                $key = $global:Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+                $sel = $menu.GetUserInput($key)
+                if ($sel -ge 0) {
+                    $instrument_menu_selection = $sel
                     $global:menu_level         = $MATERIAL_GROUP_SELECT
+                    $global:last_selected_index[$INSTRUMENT_SELECT] = $sel
                 }
-                $global:last_selected_index[$INSTRUMENT_SELECT] = $selectedItem
                 Lock-CS2500-Open-Status
             }
             $MATERIAL_GROUP_SELECT {
                 $selected_instrument = $instrument_select_array[$instrument_menu_selection]
-                $material_groups     = $materialGroupsByInstrument[$selected_instrument]
+                $groups              = $materialGroupsByInstrument[$selected_instrument]
+                # header for category
+                $global:display.setHeader(@("QC Material Label Printer".PadRight($PrimaryDisplayMinWidth), $global:open_status_message, "Select a category:"))
 
-                $global:last_selected_item = $global:last_selected_index[$MATERIAL_GROUP_SELECT]
-                $selectedItem = Select-MaterialGroup -material_groups $material_groups -display $global:display
-                if ($selectedItem -ge 0) {
-                    $selected_group_index = $selectedItem
+                $menu = [Menu]::new($groups.group_name, $global:display)
+                $menu.selectedItem = $global:last_selected_index[$MATERIAL_GROUP_SELECT]
+                $menu.DisplayMenu()
+                $key = $global:Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+                $sel = $menu.GetUserInput($key)
+                if ($sel -ge 0) {
+                    $selected_group_index = $sel
                     $global:menu_level    = $MATERIAL_SELECT
+                    $global:last_selected_index[$MATERIAL_GROUP_SELECT] = $sel
                 }
-                $global:last_selected_index[$MATERIAL_GROUP_SELECT] = $selectedItem
                 Lock-CS2500-Open-Status
             }
             $MATERIAL_SELECT {
                 $selected_instrument = $instrument_select_array[$instrument_menu_selection]
-                $selected_group      = $materialGroupsByInstrument[$selected_instrument][$selected_group_index]
+                $group               = $materialGroupsByInstrument[$selected_instrument][$selected_group_index]
+                # header for material
+                $global:display.setHeader(@("QC Material Label Printer".PadRight($PrimaryDisplayMinWidth), $global:open_status_message, "Select a reagent to print:"))
 
-                $global:last_selected_item = $global:last_selected_index[$MATERIAL_SELECT]
-                $selectedItem = Select-Material -selected_group $selected_group -display $global:display
-                if ($selectedItem -ge 0) {
-                    $selected_material_index = $selectedItem
-                    print_label -material $selected_group.materials_list[$selected_material_index]
+                $menu = [Menu]::new($group.materials_list.name, $global:display)
+                $menu.selectedItem = $global:last_selected_index[$MATERIAL_SELECT]
+                $menu.DisplayMenu()
+                $key = $global:Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+                $sel = $menu.GetUserInput($key)
+                if ($sel -ge 0) {
+                    $selected_material_index = $sel
+                    print_label -material $group.materials_list[$sel]
+                    $global:last_selected_index[$MATERIAL_SELECT] = $sel
                 }
-                $global:last_selected_index[$MATERIAL_SELECT] = $selectedItem
                 Lock-CS2500-Open-Status
             }
         }
