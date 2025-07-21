@@ -88,7 +88,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- Added conservative rounding for near`n  midnight prints`n- Open status lock bug fix`n- Added special clean labels`n- Now tracking cursor index at`n  each menu level`n- Added Specialty IA Plus Controls"
+$STARTUP_LOGMSG = "- Added conservative rounding for `n  near-midnight prints`n- Open status lock bug fix`n- Added special clean labels`n- Now tracking cursor index at`n  each menu level`n- Added Specialty IA Plus Controls"
 
 # prepend the orange alert, then color the body bright yellow
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$CYAN_FG"
