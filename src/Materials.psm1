@@ -398,22 +398,29 @@ class Material {
         $DATE_FMT = 'MM-dd-yy'
 
         $today = Get-Date
-        
-        # if within 15 minutes of midnight, bump to 00:01 next day
-        $midnight = $today.Date.AddDays(1)
-        if ($today -ge $midnight.AddMinutes(-15) -and $today -lt $midnight) {
-            $today = $midnight.AddMinutes(1)
-            $global:side_pane.push_down("`nNotice: Rounding time forward`n  to just past midnight`n")
-        }
-        
+
+        $washRounded = $false
+
         # Custom rule to round time forward for wash solutions
         $eveningStart = [datetime]::ParseExact("8:00pm", "h:mmtt", $null)
         $eveningEnd = [datetime]::ParseExact("11:59pm", "h:mmtt", $null)
         if ((contains -haystack $this.name -needle "% Wash") -and (((Get-Date) -gt $eveningStart) -and ((Get-Date) -lt $eveningEnd))) {
             $today = $today.AddDays(1)
+            $washRounded = $true
             $global:side_pane.push_down("`nNotice: Rounding time forward`nto midnight for Wash`nSolution`n") 
 
         }
+
+        if (-not $washRounded) {
+            # if within 15 minutes of midnight, bump to 00:01 next day
+            $midnight = $today.Date.AddDays(1)
+            if ($today -ge $midnight.AddMinutes(-15) -and $today -lt $midnight) {
+                $today = $midnight.AddMinutes(1)
+                $global:side_pane.push_down("`nNotice: Rounding time forward`n  to just past midnight`n")
+            }
+        }
+        
+
         $todays_date = $today.ToString($DATE_FMT)
         $todays_time = $today.ToString($TIME_FMT)
 
