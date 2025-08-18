@@ -88,7 +88,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- Added conservative rounding for `n  near-midnight prints`n- Open status lock bug fix`n- Added special clean labels`n- Now tracking cursor index at`n  each menu level`n- Added Specialty IA Plus Controls"
+$STARTUP_LOGMSG = "- Now copies ISE calibrator barcodes`n  when scanned`n- Added conservative rounding for `n  near-midnight prints`n- Added special clean labels`n"
 
 # prepend the orange alert, then color the body bright yellow
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$CYAN_FG"
@@ -507,6 +507,7 @@ class ElectrolyteLabels {
     [int]$PrinterPort
     [int]$Copies
     [bool]$DEBUG = $false  # Set this to false to disable debug prints
+    [string]$LastBarcode
 
     ElectrolyteLabels([string]$printerIp, [int]$printerPort) {
         $this.PrinterIp = $printerIp
@@ -550,17 +551,57 @@ class ElectrolyteLabels {
         return $result
     }
 
-    [string] ParseElectrolyteBarcode([string]$message) {
+    [void] PrintRawBarcodeLabel([string]$raw, [string]$caption) {
+        if ([string]::IsNullOrWhiteSpace($raw)) { return }
+
+        $zpl = @"
+^XA
+^CI28
+^CF0,28,28
+^FO30,30^BQN,2,7^FDLA,$raw^FS
+^FO30,240^A0N,32,32^FD$caption^FS
+^FO230,30^BQN,2,7^FDLA,$raw^FS
+^FO230,240^A0N,32,32^FD$caption^FS
+^XZ
+"@
+
+        $tcpClient = $null
+        $networkStream = $null
+        try {
+            $tcpClient = New-Object System.Net.Sockets.TcpClient($this.PrinterIp, $this.PrinterPort)
+            $networkStream = $tcpClient.GetStream()
+            $bytes = [System.Text.Encoding]::ASCII.GetBytes($zpl)
+            $networkStream.Write($bytes, 0, $bytes.Length)
+
+            if ($this.DEBUG) {
+                Write-Host "DEBUG: Printed single raw barcode label:"
+                Write-Host $zpl
+            }
+        }
+        catch {
+            Write-Host "Error printing raw barcode label: $_"
+        }
+        finally {
+            if ($networkStream) { $networkStream.Close() }
+            if ($tcpClient) { $tcpClient.Close() }
+        }
+    }
+
+    [string] ParseElectrolyteBarcode([string]$message, [string]$rawCaption) {
         Clear-Host
         Write-Host $message
         $barcode = Read-Barcode
 
         if (-not $barcode) {
-            # End key pressed; prompt for manual entry.
+            # End key pressed; prompt for manual entry (no raw copy printed)
             $lot = Read-Host "Enter Lot number manually"
             $exp = Read-Host "Enter Expiration date (YYYY-MM-DD) manually"
             return "$lot $exp"
         }
+
+        # Remember last raw scan and immediately print one raw copy with caption
+        $this.LastBarcode = $barcode
+        $this.PrintRawBarcodeLabel($barcode, $rawCaption)
 
         $lot = $this.ParseBarcodeLot($barcode)
         $expDate = $this.ParseBarcodeExpiration($barcode)
@@ -606,11 +647,17 @@ class ElectrolyteLabels {
     }
 
     [void] PrintLabels() {
-        $urinelow_parsed = $this.ParseElectrolyteBarcode("Scan Low Urine Barcode or press the End key for manual entry:")
-        $urinehigh_parsed = $this.ParseElectrolyteBarcode("Scan High Urine Barcode or press the End key for manual entry:")
-        $serumlow_parsed = $this.ParseElectrolyteBarcode("Scan Low Serum Barcode or press the End key for manual entry:")
-        $serumhigh_parsed = $this.ParseElectrolyteBarcode("Scan High Serum Barcode or press the End key for manual entry:")
-    
+        $urinelow_parsed  = $this.ParseElectrolyteBarcode("Scan Low Urine Barcode or press the End key for manual entry:",  "urine low")
+        # (single raw-copy label for urine low is printed at scan-time)
+
+        $urinehigh_parsed = $this.ParseElectrolyteBarcode("Scan High Urine Barcode or press the End key for manual entry:", "urine high")
+        # (single raw-copy label for urine high is printed at scan-time)
+
+        $serumlow_parsed  = $this.ParseElectrolyteBarcode("Scan Low Serum Barcode or press the End key for manual entry:",  "serum low")
+        # (single raw-copy label for serum low is printed at scan-time)
+
+        $serumhigh_parsed = $this.ParseElectrolyteBarcode("Scan High Serum Barcode or press the End key for manual entry:", "serum high")
+        # (single raw-copy label for serum high is printed at scan-time)
 
         Clear-Host
         Write-Host "How many copies to print?"
@@ -620,6 +667,7 @@ class ElectrolyteLabels {
         }
     }
 }
+
 
 function Set-DefaultPrinter {
      param(
