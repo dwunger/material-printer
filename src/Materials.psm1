@@ -2,8 +2,6 @@
 #https://docs.google.com/spreadsheets/d/e/2PACX-1vRL6PKYNT-6OfbPxJDU7TiYXKYVYY75YhlEmfAD1HRF0fWXwTbJ2JwbRUG-jgOiOBKl-f_QIOjyG5Ne/pub?output=csv
 #https://docs.google.com/spreadsheets/d/15leQ_Hy9kxP_PmoBwOqyDEln9Vvy5Bpilqm4LrJ56lE/edit?usp=sharing
 
-
-
 function Setup-MaterialGroups_original_version {
     # Read Resources File
     $f_info = Get-FileContent("./src/rsrc_info.csv")
@@ -140,8 +138,9 @@ function Setup-MaterialGroups-Async {
 
     # Process remote CSV content provided as parameter
     if (-not $RemoteContent) {
-        Write-Host "Error: Remote CSV content not provided."
-        return $null
+        
+        $Global:side_pane.push_down("Error: Remote CSV content not provided.`nGoogle's server down.")
+        #return $null
     }
     $processedContent = Preprocess-OnlineCSV -content $RemoteContent
     $remoteLines = $processedContent -split "`n"
@@ -412,7 +411,7 @@ class Material {
         }
 
         if (-not $washRounded) {
-            # if within 15 minutes of midnight, bump to 00:01 next day
+            # if within 15â€¯minutes of midnight, bump to 00:01 next day
             $midnight = $today.Date.AddDays(1)
             if ($today -ge $midnight.AddMinutes(-15) -and $today -lt $midnight) {
                 $today = $midnight.AddMinutes(1)
@@ -674,7 +673,7 @@ function getMaterials {
         # If an override is parsed, assign it.
         if ($overrideParsed) {
             if ($overrideParsed -is [System.Collections.IEnumerable] -and -not ($overrideParsed -is [Hashtable])) {
-                # It's an array – if the counts match, assign per reagent.
+                # It's an array â€“ if the counts match, assign per reagent.
                 if ($overrideParsed.Count -eq $reagent_names.Length) {
                     $currentOverride = $overrideParsed[$i]
                     if ($currentOverride.raw_zplii) {
