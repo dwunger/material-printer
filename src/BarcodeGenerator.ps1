@@ -36,8 +36,8 @@ $zpl = @"
 ^XA
 ^FO50,25^A0N,30,30^FDName: $Name^FS
 ^FO50,65^A0N,30,30^FDMRN: $MRN^FS
-$testFieldZPL^FO50,$barcodeY^BY2
-^BCN,100,Y,N,N
+$testFieldZPL^FO10,$barcodeY^BY2
+^BCN,80,Y,N,N
 ^FD$BarcodeData^FS
 ^PQ$Copies
 ^XZ
