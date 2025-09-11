@@ -88,7 +88,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- Google's endpoints for online`n  resources are back up`n- Added copies and scan features`n  to downtime barcode printer"
+$STARTUP_LOGMSG = "- Added EPIC parse function to`n  downtime barcode printer`n- Google's endpoints for online`n  resources are back up`n- Added copies and scan features`n  to downtime barcode printer"
 
 # prepend the orange alert, then color the body bright yellow
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$CYAN_FG"
