@@ -24,7 +24,7 @@ function Send-ZPLLabel {
 
     # Adjust positions based on whether Test is provided, shifting all by 25 points upward.
     if ($Test -ne "") {
-        $testFieldZPL = "^FO50,105^A0N,30,30^FDTest: $Test^FS`n"
+        $testFieldZPL = "^FO50,105^A0N,30,30^FDTest: $Test^FSn"
         $barcodeY = 135
     }
     else {
@@ -62,7 +62,6 @@ $testFieldZPL^FO10,$barcodeY^BY2
     }
 }
 
-
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
@@ -83,7 +82,7 @@ $comboPrinter = New-Object System.Windows.Forms.ComboBox
 $comboPrinter.Location = New-Object System.Drawing.Point(140, 20)
 $comboPrinter.Size = New-Object System.Drawing.Size(200, 20)
 $comboPrinter.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
-# Define printers with friendly names and IPs (fixed missing comma)
+# Define printers with friendly names and IPs
 $printers = @(
     [PSCustomObject]@{ Name = "Central Processing"; IP = "PRT001065" },
     [PSCustomObject]@{ Name = "Hematology"; IP = "PRT001069" },
@@ -172,7 +171,7 @@ $listSent.Location = New-Object System.Drawing.Point(140, 220)
 $listSent.Size = New-Object System.Drawing.Size(300, 100)
 $form.Controls.Add($listSent)
 
-# Button: Scan (NEW)
+# Button: Scan
 $btnScan = New-Object System.Windows.Forms.Button
 $btnScan.Location = New-Object System.Drawing.Point(30, 340)
 $btnScan.Size = New-Object System.Drawing.Size(100, 30)
@@ -200,7 +199,16 @@ $btnExit.Size = New-Object System.Drawing.Size(100, 30)
 $btnExit.Text = "Exit"
 $form.Controls.Add($btnExit)
 
-# --- Scan modal logic ---
+# =========================
+# NEW: Parse EMR Button
+# =========================
+$btnParse = New-Object System.Windows.Forms.Button
+$btnParse.Location = New-Object System.Drawing.Point(30, 380)   # extra row; avoids shifting existing buttons
+$btnParse.Size = New-Object System.Drawing.Size(100, 30)
+$btnParse.Text = "Parse EMR"
+$form.Controls.Add($btnParse)
+
+# --- Scan modal logic (existing) ---
 function Show-ScanDialog {
     param([System.Windows.Forms.Form]$owner)
 
@@ -255,7 +263,112 @@ function Show-ScanDialog {
     return $scanForm.ShowDialog($owner), $scanForm.Tag
 }
 
-# Event handler: Scan button
+# =========================
+# NEW: EMR Parse popup
+# =========================
+function Show-ParseDialog {
+    param([System.Windows.Forms.Form]$owner)
+
+    $dlg = New-Object System.Windows.Forms.Form
+    $dlg.Text = "Paste EMR Patient Info"
+    $dlg.StartPosition = "CenterParent"
+    $dlg.Size = New-Object System.Drawing.Size(520, 340)
+    $dlg.FormBorderStyle = 'FixedDialog'
+    $dlg.MaximizeBox = $false
+    $dlg.MinimizeBox = $false
+    $dlg.TopMost = $true
+    $dlg.ShowInTaskbar = $false
+
+    $lbl = New-Object System.Windows.Forms.Label
+    $lbl.Location = New-Object System.Drawing.Point(12, 10)
+    $lbl.Size = New-Object System.Drawing.Size(480, 30)
+    $lbl.Text = "Paste the patient information from the specimen summary on EPIC's outstanding list to automatically populate the fields"
+    $dlg.Controls.Add($lbl)
+
+    $txt = New-Object System.Windows.Forms.TextBox
+    $txt.Multiline = $true
+    $txt.ScrollBars = 'Vertical'
+    $txt.Location = New-Object System.Drawing.Point(12, 40)
+    $txt.Size = New-Object System.Drawing.Size(480, 220)
+    $dlg.Controls.Add($txt)
+
+    $btnOK = New-Object System.Windows.Forms.Button
+    $btnOK.Text = "Parse"
+    $btnOK.Location = New-Object System.Drawing.Point(316, 270)
+    $btnOK.Add_Click({ $dlg.Tag = $txt.Text; $dlg.DialogResult = [System.Windows.Forms.DialogResult]::OK; $dlg.Close() })
+    $dlg.Controls.Add($btnOK)
+
+    $btnCancel = New-Object System.Windows.Forms.Button
+    $btnCancel.Text = "Cancel"
+    $btnCancel.Location = New-Object System.Drawing.Point(407, 270)
+    $btnCancel.Add_Click({ $dlg.DialogResult = [System.Windows.Forms.DialogResult]::Cancel; $dlg.Close() })
+    $dlg.Controls.Add($btnCancel)
+
+    $dlg.Add_Shown({ $txt.Focus() })
+    return $dlg.ShowDialog($owner), $dlg.Tag
+}
+
+# =========================
+# NEW: EMR text parser
+# =========================
+function Parse-EMRText {
+    param([string]$Raw)
+
+    $result = [PSCustomObject]@{
+        Name         = $null
+        MRN          = $null
+        InstrumentID = $null
+    }
+    if ([string]::IsNullOrWhiteSpace($Raw)) { return $result }
+
+    # Normalize and split into trimmed lines (no regex)
+    $text  = $Raw.Replace("`r","")
+    $lines = $text.Split(@("`n"), [System.StringSplitOptions]::None) |
+             ForEach-Object { $_.Trim() } |
+             Where-Object { $_ -ne "" }
+
+    # 1) Instrument ID: find the line that starts with "Instrument ID:"
+    $idLine = $lines | Where-Object { $_.StartsWith("Instrument ID:", [System.StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
+    if ($idLine) {
+        $colon = $idLine.IndexOf(":")
+        if ($colon -ge 0) { $result.InstrumentID = $idLine.Substring($colon + 1).Trim() }
+    }
+
+    # 2) Name + MRN: find the line that contains "(MRN"
+    $nmLine = $null
+    foreach ($line in $lines) {
+        if ($line.IndexOf("(MRN", [System.StringComparison]::OrdinalIgnoreCase) -ge 0) { $nmLine = $line; break }
+    }
+
+    if ($nmLine) {
+        # Pull everything before the "(" as the raw "Last, First [Middle]" block
+        $paren = $nmLine.IndexOf("(")
+        $nameBlock = if ($paren -gt 0) { $nmLine.Substring(0, $paren).Trim() } else { $nmLine.Trim() }
+
+        # Keep EMR's "Last, First [Middle]" format exactly as provided
+        $result.Name = $nameBlock.Trim()
+
+
+        # Extract MRN token after "MRN"
+        $mrnIdx = $nmLine.IndexOf("MRN", [System.StringComparison]::OrdinalIgnoreCase)
+        if ($mrnIdx -ge 0) {
+            $after = $nmLine.Substring($mrnIdx + 3)  # skip 'MRN'
+            # Skip separators (spaces, punctuation)
+            $i = 0
+            while ($i -lt $after.Length -and -not ([char]::IsLetterOrDigit($after[$i]) -or $after[$i] -eq '-')) { $i++ }
+            # Read MRN chars (letters, digits, hyphen) until a non-MRN char or ')'
+            $j = $i
+            while ($j -lt $after.Length -and (
+                      [char]::IsLetterOrDigit($after[$j]) -or $after[$j] -eq '-')) { $j++ }
+            if ($j -gt $i) { $result.MRN = $after.Substring($i, $j - $i) }
+        }
+    }
+
+    return $result
+}
+
+
+# --- Event handler: Scan button (existing) ---
 $btnScan.Add_Click({
     $result, $value = Show-ScanDialog -owner $form
     if ($result -eq [System.Windows.Forms.DialogResult]::OK -and $value) {
@@ -265,7 +378,7 @@ $btnScan.Add_Click({
     }
 })
 
-# Event handler for Send Label button
+# --- Event handler: Send Label (existing) ---
 $btnSend.Add_Click({
     $selectedPrinter = $comboPrinter.SelectedItem
     if (-not $selectedPrinter) {
@@ -294,7 +407,7 @@ $btnSend.Add_Click({
     $txtTest.Clear()
 })
 
-# Event handler for Next Patient button: clear patient details and sent label history (copies persists)
+# --- Event handler: Next Patient (existing) ---
 $btnNext.Add_Click({
     $txtPatientName.Clear()
     $txtPatientMRN.Clear()
@@ -303,8 +416,32 @@ $btnNext.Add_Click({
     $listSent.Items.Clear()
 })
 
-# Exit button closes the form.
+# --- Event handler: Exit (existing) ---
 $btnExit.Add_Click({ $form.Close() })
+
+# =========================
+# NEW: Event handler: Parse EMR
+# =========================
+$btnParse.Add_Click({
+    $result, $raw = Show-ParseDialog -owner $form
+    if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+        $parsed = Parse-EMRText -Raw $raw
+
+        $filled = @()
+        if ($parsed.Name)        { $txtPatientName.Text = $parsed.Name; $filled += 'Name' }
+        if ($parsed.MRN)         { $txtPatientMRN.Text = $parsed.MRN; $filled += 'MRN' }
+        if ($parsed.InstrumentID){ $txtInstrument.Text = $parsed.InstrumentID; $filled += 'Instrument ID' }
+
+        if ($filled.Count -eq 0) {
+            [System.Windows.Forms.MessageBox]::Show("Couldn't parse Name, MRN, or Instrument ID. Please check the pasted text and try again.", "Parse failed")
+        } else {
+            # Move cursor to next useful field
+            if (-not $txtInstrument.Text) { $txtInstrument.Focus() }
+            elseif (-not $txtTest.Text)  { $txtTest.Focus() }
+            else                         { $btnSend.Focus() }
+        }
+    }
+})
 
 $form.Add_Shown({ $form.Activate() })
 [System.Windows.Forms.Application]::Run($form)
