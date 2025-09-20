@@ -2,6 +2,259 @@
 #https://docs.google.com/spreadsheets/d/e/2PACX-1vRL6PKYNT-6OfbPxJDU7TiYXKYVYY75YhlEmfAD1HRF0fWXwTbJ2JwbRUG-jgOiOBKl-f_QIOjyG5Ne/pub?output=csv
 #https://docs.google.com/spreadsheets/d/15leQ_Hy9kxP_PmoBwOqyDEln9Vvy5Bpilqm4LrJ56lE/edit?usp=sharing
 
+# Mini Excel CSV engine with formula-aware CSV parsing
+# Supports:
+#   =CONCATENATE("text", A1, ";", J3, ...)
+#   TODAY()
+#   =<date-or-cell> - TODAY()   # day diff (see Get-InclusiveDaysUntil)
+
+#---------------------- CSV parsing (formula-aware) ----------------------#
+function Parse-CsvLineSmart {
+    param([string]$line)
+
+    $fields = @()
+    $buf = New-Object System.Text.StringBuilder
+    $inQuotes = $false
+    $parenDepth = 0
+    $i = 0
+
+    while ($i -lt $line.Length) {
+        $ch = $line[$i]
+
+        if ($ch -eq '"') {
+            # Handle escaped double-quote ("")
+            if ($inQuotes -and $i+1 -lt $line.Length -and $line[$i+1] -eq '"') {
+                [void]$buf.Append('"'); $i += 2; continue
+            }
+            $inQuotes = -not $inQuotes
+            [void]$buf.Append($ch); $i++; continue
+        }
+
+        if (-not $inQuotes) {
+            if ($ch -eq '(') { $parenDepth++; [void]$buf.Append($ch); $i++; continue }
+            if ($ch -eq ')') { if ($parenDepth -gt 0) { $parenDepth-- } [void]$buf.Append($ch); $i++; continue }
+            if ($ch -eq ',' -and $parenDepth -eq 0) {
+                $fields += $buf.ToString()
+                $buf.Clear() | Out-Null
+                $i++; continue
+            }
+        }
+
+        [void]$buf.Append($ch); $i++
+    }
+
+    $fields += $buf.ToString()
+    return ,$fields
+}
+
+function Get-MaxCsvColumns {
+    param([string[]]$Lines)
+    $max = 0
+    foreach ($line in $Lines) {
+        $count = (Parse-CsvLineSmart $line).Count
+        if ($count -gt $max) { $max = $count }
+    }
+    return $max
+}
+
+function ConvertTo-Grid {
+    param([string]$CsvText)
+    $lines = $CsvText -split "`r?`n" | Where-Object { $_ -ne "" }
+    $cols = Get-MaxCsvColumns $lines
+
+    $grid = @()
+    foreach ($line in $lines) {
+        $parts = Parse-CsvLineSmart $line
+        # Pad to rectangular
+        while ($parts.Count -lt $cols) { $parts += "" }
+        # Normalize: remove surrounding quotes, keep inner "" as "
+        for ($i=0; $i -lt $parts.Count; $i++) {
+            $s = $parts[$i].Trim()
+            if ($s -match '^"(.*)"$') { $s = $s.Substring(1, $s.Length-2) -replace '""','"' }
+            $parts[$i] = $s
+        }
+        $grid += ,([object[]]$parts)
+    }
+    return ,$grid
+}
+
+#---------------------- A1 references ----------------------#
+function Get-ColumnIndexFromA1 {
+    param([string]$ref)
+    $colLetters = ($ref -replace '[^A-Za-z]').ToUpper()
+    $n = 0
+    foreach ($ch in $colLetters.ToCharArray()) {
+        $n = ($n * 26) + ([int][char]$ch - [int][char]'A' + 1)
+    }
+    return $n - 1
+}
+function Get-RowIndexFromA1 {
+    param([string]$ref)
+    $digits = ($ref -replace '[^0-9]')
+    if ([string]::IsNullOrWhiteSpace($digits)) { throw "Invalid A1 reference '$ref' (no row number)." }
+    return [int]$digits - 1
+}
+
+#---------------------- Formula evaluation ----------------------#
+function Split-Args {
+    param([string]$argsText)
+    # Split on commas not in quotes
+    $parts = @()
+    $buf = New-Object System.Text.StringBuilder
+    $inQuotes = $false
+    for ($i=0; $i -lt $argsText.Length; $i++) {
+        $ch = $argsText[$i]
+        if ($ch -eq '"') {
+            if ($inQuotes -and $i+1 -lt $argsText.Length -and $argsText[$i+1] -eq '"') {
+                [void]$buf.Append('"'); $i++; continue
+            }
+            $inQuotes = -not $inQuotes
+            [void]$buf.Append($ch)
+        } elseif ($ch -eq ',' -and -not $inQuotes) {
+            $parts += $buf.ToString().Trim()
+            $buf.Clear() | Out-Null
+        } else {
+            [void]$buf.Append($ch)
+        }
+    }
+    $parts += $buf.ToString().Trim()
+    return $parts
+}
+
+function Unquote {
+    param([string]$s)
+    if ($s -match '^"(.*)"$') {
+        return ($Matches[1] -replace '""','"')
+    }
+    return $s
+}
+
+function Try-ParseDate {
+    param([string]$s, [ref]$dt)
+    $styles = [System.Globalization.DateTimeStyles]::AllowWhiteSpaces
+    $culture = [System.Globalization.CultureInfo]::GetCultureInfo('en-US')
+    return [datetime]::TryParse($s, $culture, $styles, $dt)
+}
+
+function Get-Today { (Get-Date).Date }
+
+# Inclusive day math as originally requested
+function Get-InclusiveDaysUntil {
+    param([datetime]$target, [datetime]$today)
+    if ($target -ge $today) {
+        return (($target - $today).Days + 1)
+    } else {
+        return -(([int]($today - $target).Days) - 1)
+    }
+}
+
+function Evaluate-Cell {
+    param(
+        [object[][]]$Grid,
+        [int]$RowIndex,
+        [int]$ColIndex,
+        [hashtable]$Cache
+    )
+    $key = "$RowIndex,$ColIndex"
+    if ($Cache.ContainsKey($key)) { return $Cache[$key] }
+
+    $raw = [string]$Grid[$RowIndex][$ColIndex]
+    if ([string]::IsNullOrWhiteSpace($raw)) { $Cache[$key] = ""; return "" }
+
+    if ($raw.StartsWith('=')) {
+        $expr = $raw.Substring(1).Trim()
+
+        # CONCATENATE(...)
+        if ($expr -match '^CONCATENATE\s*\((.*)\)$') {
+            $argsText = $Matches[1]
+            $parts = Split-Args $argsText
+            $sb = New-Object System.Text.StringBuilder
+            foreach ($p in $parts) {
+                $p2 = $p.Trim()
+                if ($p2 -match '^".*"$') {
+                    [void]$sb.Append( (Unquote $p2) )
+                } elseif ($p2 -match '^[A-Za-z]+[0-9]+$') {
+                    $c = Get-ColumnIndexFromA1 $p2
+                    $r = Get-RowIndexFromA1 $p2
+                    [void]$sb.Append( (Evaluate-Cell -Grid $Grid -RowIndex $r -ColIndex $c -Cache $Cache) )
+                } elseif ($p2 -match '^TODAY\(\)$') {
+                    [void]$sb.Append( (Get-Today).ToString('M/d/yyyy') )
+                } else {
+                    [void]$sb.Append($p2)
+                }
+            }
+            $val = $sb.ToString()
+            $Cache[$key] = $val
+            return $val
+        }
+
+        # <thing> - TODAY()
+        if ($expr -match '^(.*?)-\s*TODAY\(\)\s*$') {
+            $left = $Matches[1].Trim()
+            if ($left -match '^[A-Za-z]+[0-9]+$') {
+                $c = Get-ColumnIndexFromA1 $left
+                $r = Get-RowIndexFromA1 $left
+                $left = Evaluate-Cell -Grid $Grid -RowIndex $r -ColIndex $c -Cache $Cache
+            } elseif ($left -match '^".*"$') {
+                $left = Unquote $left
+            }
+
+            $dt = [datetime]::MinValue
+            if (Try-ParseDate -s $left -dt ([ref]$dt)) {
+                $days = Get-InclusiveDaysUntil -target $dt.Date -today (Get-Today)
+                $Cache[$key] = [string]$days
+                return $Cache[$key]
+            } else {
+                throw "Left side '$left' is not a recognizable date for '$raw'."
+            }
+        }
+
+        # TODAY()
+        if ($expr -match '^TODAY\(\)$') {
+            $val = (Get-Today).ToString('M/d/yyyy')
+            $Cache[$key] = $val
+            return $val
+        }
+
+        throw "Unsupported formula: $raw"
+    }
+
+    $Cache[$key] = $raw
+    return $raw
+}
+
+function Invoke-CsvExcelEngine {
+    param([Parameter(Mandatory)][string]$CsvText)
+    $grid = ConvertTo-Grid -CsvText $CsvText
+    $rows = @()
+    for ($r=0; $r -lt $grid.Count; $r++) {
+        $cache = @{}
+        $rowOut = @()
+        for ($c=0; $c -lt $grid[$r].Count; $c++) {
+            $rowOut += (Evaluate-Cell -Grid $grid -RowIndex $r -ColIndex $c -Cache $cache)
+        }
+        # Trim trailing blanks
+        for ($i = $rowOut.Count-1; $i -ge 0; $i--) {
+            if ($rowOut[$i] -ne '') { break } else { $rowOut = $rowOut[0..($i-1)] }
+        }
+        $rows += ,($rowOut -join ',')
+    }
+    return ($rows -join "`r`n")
+}
+
+function Convert-CsvExcelFile {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [string]$Path
+    )
+    $csv = Get-Content -Raw -LiteralPath $Path
+    return (Invoke-CsvExcelEngine -CsvText $csv)
+}
+
+#### End Mini-excel engine
+
 function Setup-MaterialGroups_original_version {
     # Read Resources File
     $f_info = Get-FileContent("./src/rsrc_info.csv")
@@ -50,6 +303,48 @@ function Setup-MaterialGroups_original_version {
         }
     }
 
+    return $MaterialGroupsByInstrument
+}
+
+
+function Setup-MaterialGroupsOFFLINEPATCH {
+    # Initialize the MaterialGroupsByInstrument hashtable
+    $MaterialGroupsByInstrument = @{}
+
+    # Read and process the local CSV file
+    $localFilePath = "./src/rsrc_info.csv"
+    if (-not (Test-Path $localFilePath)) {
+        Write-Host "Error: Local file 'rsrc_info.csv' not found."
+        return $null
+    }
+
+    # Read the local CSV file content
+    $localFileContent = Get-Content -Path $localFilePath -Raw
+    $localLines = $localFileContent -split "`n"
+
+    # Process local data lines
+    $success = Process-MaterialGroupsLines -lines $localLines -MaterialGroupsByInstrument ([ref]$MaterialGroupsByInstrument) -Delimiter ";"
+    if (-not $success) {
+        Write-Host "Error: Failed to process local material groups."
+        return $null
+    }
+
+    $remoteContent = Convert-CsvExcelFile .\src\excel_rsrc.csv
+
+    # Pre-process the content to swap commas and semicolons
+    $processedContent = Preprocess-OnlineCSV -content $remoteContent
+
+    # Split the processed content into lines
+    $remoteLines = $processedContent -split "`n"
+
+    # Process remote data lines using the same delimiter as local CSV
+    $success = Process-MaterialGroupsLines -lines $remoteLines -MaterialGroupsByInstrument ([ref]$MaterialGroupsByInstrument) -Delimiter ";"
+    if (-not $success) {
+        Write-Host "Error: Failed to process remote material groups."
+        return $null
+    }
+
+    # Return the combined MaterialGroupsByInstrument
     return $MaterialGroupsByInstrument
 }
 
@@ -411,7 +706,7 @@ class Material {
         }
 
         if (-not $washRounded) {
-            # if within 15â€¯minutes of midnight, bump to 00:01 next day
+            # if within 15Ã¢â‚¬Â¯minutes of midnight, bump to 00:01 next day
             $midnight = $today.Date.AddDays(1)
             if ($today -ge $midnight.AddMinutes(-15) -and $today -lt $midnight) {
                 $today = $midnight.AddMinutes(1)
@@ -673,7 +968,7 @@ function getMaterials {
         # If an override is parsed, assign it.
         if ($overrideParsed) {
             if ($overrideParsed -is [System.Collections.IEnumerable] -and -not ($overrideParsed -is [Hashtable])) {
-                # It's an array â€“ if the counts match, assign per reagent.
+                # It's an array Ã¢â‚¬â€œ if the counts match, assign per reagent.
                 if ($overrideParsed.Count -eq $reagent_names.Length) {
                     $currentOverride = $overrideParsed[$i]
                     if ($currentOverride.raw_zplii) {
