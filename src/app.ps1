@@ -4,16 +4,20 @@ using module '..\huginn\utils.psm1'
 using module '.\muginn.psm1'
 
 # Launch asynchronous job to fetch the online CSV
-$csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRL6PKYNT-6OfbPxJDU7TiYXKYVYY75YhlEmfAD1HRF0fWXwTbJ2JwbRUG-jgOiOBKl-f_QIOjyG5Ne/pub?output=csv"
-$job = Start-Job -ScriptBlock {
-    param($url)
-    try {
-        $response = Invoke-WebRequest -Uri $url -UseBasicParsing
-        return $response.Content
-    } catch {
-        return $null
-    }
-} -ArgumentList $csvUrl
+
+
+########### OFFLINE PATCH
+#$csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRL6PKYNT-6OfbPxJDU7TiYXKYVYY75YhlEmfAD1HRF0fWXwTbJ2JwbRUG-jgOiOBKl-f_QIOjyG5Ne/pub?output=csv"
+#$job = Start-Job -ScriptBlock {
+#    param($url)
+#    try {
+#        $response = Invoke-WebRequest -Uri $url -UseBasicParsing
+#        return $response.Content
+#    } catch {
+#        return $null
+#    }
+#} -ArgumentList $csvUrl
+
 
 if (Test-Path '~\Desktop\QC Label Printer `[TEST`].lnk') {
    Move '~\Desktop\QC Label Printer `[TEST`].lnk' '~\Desktop\Label Printer.lnk'
@@ -88,7 +92,7 @@ if ($DISABLE_PRINT){
     $global:VERSION += "$RED_FG - Printing is Disabled in Debug Mode."
 } 
 
-$STARTUP_LOGMSG = "- Added EPIC parse function to`n  downtime barcode printer`n- Google's endpoints for online`n  resources are back up`n- Added copies and scan features`n  to downtime barcode printer"
+$STARTUP_LOGMSG = "- Google's endpoints for online`n  resources are back up`n- Added copies and scan features`n  to downtime barcode printer"
 
 # prepend the orange alert, then color the body bright yellow
 $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$CYAN_FG"
@@ -1208,9 +1212,11 @@ function main {
     $printerManager = [PrinterManager]::new("./src/printer_config.csv")
     $global:printerIp = $printerManager.DefaultPrinterIp
 
+    #####OFFLINE PATCH
     # wait for remote CSV
-    $remoteContent = Receive-Job -Job $global:job -Wait -AutoRemoveJob
-    $materialGroupsByInstrument = Setup-MaterialGroups-Async -RemoteContent $remoteContent
+    #$remoteContent = Receive-Job -Job $global:job -Wait -AutoRemoveJob
+    #$materialGroupsByInstrument = Setup-MaterialGroups-Async -RemoteContent $remoteContent
+    $materialGroupsByInstrument = Setup-MaterialGroupsOFFLINEPATCH
     if ($null -eq $materialGroupsByInstrument) {
         Write-Host "Failed to initialize material groups. Exiting."
         return 1
