@@ -23,7 +23,9 @@ src/Materials.psm1
 src/muginn.psm1
 src/printer_config.csv
 src/rsrc_info.csv
+src/excel_rsrc.csv
 src/ScreenManager.psm1
 src/StartupLogger.ps1
 tests/test_config.txt
 tests/utils.ps1
+
