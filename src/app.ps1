@@ -1844,8 +1844,9 @@ function main_gui {
     $btnHelp.Add_Click({ AdvancedHelp })
     $btnUpdate.Add_Click({
         try {
-            powershell.exe -ExecutionPolicy Bypass -File (Join-Path $RootDir 'Huginn.ps1')
-            Start-Process powershell -ArgumentList ('-ExecutionPolicy Bypass -File "' + $PSCommandPath + '"') -NoNewWindow
+            powershell.exe -ExecutionPolicy Bypass -File .\Huginn.ps1
+            Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\app.ps1"' -NoNewWindow
+            exit
             $form.Close()
         } catch {
             [System.Windows.Forms.MessageBox]::Show("Update failed: $_","QC Label Printer",'OK','Error') | Out-Null
