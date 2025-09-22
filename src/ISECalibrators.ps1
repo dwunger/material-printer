@@ -12,7 +12,7 @@ $PRINTER_PORT = 9100
 function Trim-ScannerSlashes {
     param([string]$s)
     if ([string]::IsNullOrWhiteSpace($s)) { return "" }
-    # Scanners wrap with backslashes: \DATA\ → keep the raw in state for QR, but for parsing remove '\'
+    # Scanners wrap with backslashes: \DATA\ -> keep the raw in state for QR, but for parsing remove '\'
     return ($s -replace '\\','').Trim()
 }
 
@@ -258,13 +258,13 @@ $panelBtns.AutoSize = $true
 $layout.SetColumnSpan($panelBtns, 2)
 
 $btnNext = New-Object Windows.Forms.Button
-$btnNext.Text = "Next ⮞"
+$btnNext.Text = "Next >"
 $btnNext.Font = $fontB
 $btnNext.AutoSize = $true
 $panelBtns.Controls.Add($btnNext)
 
 $btnBack = New-Object Windows.Forms.Button
-$btnBack.Text = "⮜ Back"
+$btnBack.Text = "< Back"
 $btnBack.Font = $fontB
 $btnBack.AutoSize = $true
 $panelBtns.Controls.Add($btnBack)
