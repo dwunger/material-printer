@@ -1581,7 +1581,7 @@ function main_gui {
     [void]$col0.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100)))
 
     $lblInstrument = New-Object Windows.Forms.Label
-    $lblInstrument.Text = "Instrument"; $lblInstrument.Font = $fontTitle; $lblInstrument.AutoSize = $true
+    $lblInstrument.Text = "Section"; $lblInstrument.Font = $fontTitle; $lblInstrument.AutoSize = $true
 
     $cmbInstrument = New-Object Windows.Forms.ComboBox
     $cmbInstrument.DropDownStyle = 'DropDownList'; $cmbInstrument.Width = 280
