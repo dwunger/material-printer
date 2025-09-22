@@ -1,4 +1,4 @@
-# ISECalibrators.ps1 — WinForms wizard with optional QR printing
+# ISECalibrators.ps1 - WinForms wizard with optional QR printing
 # Hardcoded printer: PRT001062:9100
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -145,7 +145,7 @@ for($i=0;$i -lt 10;$i++){ $layout.RowStyles.Add([Windows.Forms.RowStyle]::new([W
 # Step title
 $lblStep = New-Object Windows.Forms.Label
 $lblStep.Font = $fontH
-$lblStep.Text = "Step 1 of 5 — Low Urine"
+$lblStep.Text = "Step 1 of 5 Low Urine"
 $lblStep.AutoSize = $true
 $layout.SetColumnSpan($lblStep, 2)
 $layout.Controls.Add($lblStep, 0, 0)
@@ -294,7 +294,7 @@ function Refresh-Step {
 
     $isCopyStep = ($script:steps[$idx] -eq "Copies")
 
-    $lblStep.Text = "Step {0} of 5 — {1}" -f ($idx+1), $script:steps[$idx]
+    $lblStep.Text = "Step {0} of 5 {1}" -f ($idx+1), $script:steps[$idx]
     $txtBarcode.Text = ""
     $txtLot.Text     = ""
     $txtExp.Text     = ""
