@@ -1192,6 +1192,381 @@ function AdvancedHelp {
     }
 }
 
+function main_gui {
+    # ---------- paths (absolute to this script) ----------
+    $ScriptDir      = Split-Path -Parent $PSCommandPath            # ...\src
+    $RootDir        = Split-Path -Parent $ScriptDir                # ...\QC Materials Printer
+    $PrinterCsvPath = Join-Path $ScriptDir 'printer_config.csv'    # ...\src\printer_config.csv
+
+    # ---------- globals / initial state ----------
+    $global:last_selected_index = @(0,0,0)
+    $global:menu_level = $INSTRUMENT_SELECT
+    $global:QueuePending = $false
+    $global:side_pane = $null
+    $global:startup = $true
+
+    # ---------- data boot ----------
+    $materialGroupsByInstrument = Setup-MaterialGroupsOFFLINEPATCH
+    if ($null -eq $materialGroupsByInstrument) {
+        [System.Windows.Forms.MessageBox]::Show("Failed to initialize material groups.","QC Label Printer", 'OK','Error') | Out-Null
+        return 1
+    }
+
+    # Helper: robust CSV read/write that matches your headers exactly
+    function Read-PrinterCsv([string]$path) {
+        if (-not (Test-Path $path)) { return @() }
+        $rows = Import-Csv -Path $path -Delimiter ';'
+        # Normalize property names that contain spaces (PowerShell maps them fine)
+        foreach ($r in $rows) {
+            # trim values; ensure props exist
+            foreach ($k in @('printer name','ip address','reserved field','is default')) {
+                if (-not ($r.PSObject.Properties.Name -contains $k)) { $r | Add-Member -NotePropertyName $k -NotePropertyValue '' }
+                $r.$k = ($r.$k | ForEach-Object { $_ -as [string] }).Trim()
+            }
+        }
+        return $rows
+    }
+    function Write-PrinterCsv([string]$path, $rows) {
+        # Recreate objects with the exact header names so Export-Csv writes the same headers/order
+        $out = foreach ($r in $rows) {
+            [pscustomobject]([ordered]@{
+                'printer name'  = $r.'printer name'
+                'ip address'    = $r.'ip address'
+                'reserved field'= $r.'reserved field'
+                'is default'    = $r.'is default'
+            })
+        }
+        $out | Export-Csv -Path $path -Delimiter ';' -NoTypeInformation -Encoding UTF8
+    }
+
+    # Load printers + set global printer IP from default row
+    $printerRows = Read-PrinterCsv $PrinterCsvPath
+    if ($printerRows.Count -gt 0) {
+        $default = $printerRows | Where-Object { $_.'is default' -eq '1' } | Select-Object -First 1
+        if ($default) { $global:printerIp = $default.'ip address' }
+    }
+
+    $instrumentList = ($materialGroupsByInstrument.Keys | Sort-Object)
+
+    # ---------- UI ----------
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = "QC Material Label Printer"
+    $form.StartPosition = 'CenterScreen'
+    $form.Size = [System.Drawing.Size]::new(1000, 650)
+    $form.MinimumSize = [System.Drawing.Size]::new(900, 580)
+
+    $fontTitle = New-Object Drawing.Font("Segoe UI", 10, [Drawing.FontStyle]::Bold)
+    $fontBody  = New-Object Drawing.Font("Segoe UI", 9)
+
+    $main = New-Object System.Windows.Forms.TableLayoutPanel
+    $main.Dock = 'Fill'
+    $main.ColumnCount = 3
+    $main.RowCount = 1
+    [void]$main.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 33)))
+    [void]$main.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 34)))
+    [void]$main.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 33)))
+    [void]$main.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100)))
+
+    # Column 0
+    $col0 = New-Object System.Windows.Forms.TableLayoutPanel
+    $col0.Dock = 'Fill'; $col0.Padding = [System.Windows.Forms.Padding]::new(12)
+    $col0.RowCount = 4; $col0.ColumnCount = 1
+    [void]$col0.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::AutoSize)))
+    [void]$col0.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::AutoSize)))
+    [void]$col0.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::AutoSize)))
+    [void]$col0.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100)))
+
+    $lblInstrument = New-Object Windows.Forms.Label
+    $lblInstrument.Text = "Instrument"; $lblInstrument.Font = $fontTitle; $lblInstrument.AutoSize = $true
+
+    $cmbInstrument = New-Object Windows.Forms.ComboBox
+    $cmbInstrument.DropDownStyle = 'DropDownList'; $cmbInstrument.Width = 280
+    [void]$cmbInstrument.Items.AddRange($instrumentList)
+
+    $lblCategory = New-Object Windows.Forms.Label
+    $lblCategory.Text = "Category"; $lblCategory.Font = $fontTitle; $lblCategory.AutoSize = $true
+
+    $lstCategory = New-Object Windows.Forms.ListBox; $lstCategory.Dock = 'Fill'
+
+    [void]$col0.Controls.Add($lblInstrument, 0, 0)
+    [void]$col0.Controls.Add($cmbInstrument, 0, 1)
+    [void]$col0.Controls.Add($lblCategory, 0, 2)
+    [void]$col0.Controls.Add($lstCategory, 0, 3)
+
+    # Column 1
+    $col1 = New-Object System.Windows.Forms.TableLayoutPanel
+    $col1.Dock = 'Fill'; $col1.Padding = [System.Windows.Forms.Padding]::new(12)
+    $col1.RowCount = 2; $col1.ColumnCount = 1
+    [void]$col1.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::AutoSize)))
+    [void]$col1.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100)))
+
+    $lblMaterial = New-Object Windows.Forms.Label
+    $lblMaterial.Text = "Reagent"; $lblMaterial.Font = $fontTitle; $lblMaterial.AutoSize = $true
+
+    $lstMaterial = New-Object Windows.Forms.ListBox; $lstMaterial.Dock = 'Fill'
+
+    [void]$col1.Controls.Add($lblMaterial, 0, 0)
+    [void]$col1.Controls.Add($lstMaterial, 0, 1)
+
+    # Column 2
+    $col2 = New-Object System.Windows.Forms.Panel; $col2.Dock = 'Fill'; $col2.Padding = [System.Windows.Forms.Padding]::new(12)
+
+    $grpActions = New-Object Windows.Forms.GroupBox
+    $grpActions.Text = "Actions"; $grpActions.Font = $fontTitle; $grpActions.Dock = 'Fill'
+
+    $stack = New-Object System.Windows.Forms.TableLayoutPanel
+    $stack.Dock = 'Fill'; $stack.ColumnCount = 1; $stack.RowCount = 8
+    for ($i=0; $i -lt 7; $i++) { [void]$stack.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::AutoSize))) }
+    [void]$stack.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100)))
+
+    function New-ActionButton($text) {
+        $b = New-Object Windows.Forms.Button
+        $b.Text = $text; $b.Font = $fontBody; $b.AutoSize = $true; $b.AutoSizeMode = 'GrowAndShrink'; $b.Dock = 'Top'
+        return $b
+    }
+
+    $btnPrint         = New-ActionButton "Print Selected"
+    $btnToggleOpen    = New-ActionButton "Toggle Open/Closed"
+    $btnFlush         = New-ActionButton "Flush Print Queue"
+    $btnISE           = New-ActionButton "ISE Calibration Labels"
+    $btnSelectPrinter = New-ActionButton "Select Printer..."
+    $btnHelp          = New-ActionButton "Help"
+    $btnUpdate        = New-ActionButton "Update"
+
+    [void]$stack.Controls.Add($btnPrint)
+    [void]$stack.Controls.Add($btnToggleOpen)
+    [void]$stack.Controls.Add($btnFlush)
+    [void]$stack.Controls.Add($btnISE)
+    [void]$stack.Controls.Add($btnSelectPrinter)
+    [void]$stack.Controls.Add($btnHelp)
+    [void]$stack.Controls.Add($btnUpdate)
+
+    [void]$grpActions.Controls.Add($stack)
+    [void]$col2.Controls.Add($grpActions)
+
+    [void]$main.Controls.Add($col0, 0, 0)
+    [void]$main.Controls.Add($col1, 1, 0)
+    [void]$main.Controls.Add($col2, 2, 0)
+
+    # Status bar
+    $status    = New-Object Windows.Forms.StatusStrip
+    $stPrinter = New-Object Windows.Forms.ToolStripStatusLabel
+    $stOpen    = New-Object Windows.Forms.ToolStripStatusLabel
+    $stQueue   = New-Object Windows.Forms.ToolStripStatusLabel
+    $stVersion = New-Object Windows.Forms.ToolStripStatusLabel
+    $stVersion.Spring = $true; $stVersion.TextAlign = [System.Drawing.ContentAlignment]::MiddleRight
+    [void]$status.Items.AddRange(@($stPrinter,$stOpen,$stQueue,$stVersion))
+
+    [void]$form.Controls.Add($main)
+    [void]$form.Controls.Add($status)
+
+    # ---------- helpers ----------
+    function Set-Status {
+        $stPrinter.Text = "Printer: $($global:printerIp)"
+        $stQueue.Text   = if ($global:QueuePending) { "Queue: pending" } else { "Queue: idle" }
+        $stVersion.Text = "Version: $($global:VERSION)"
+        $status.Refresh()
+        [System.Windows.Forms.Application]::DoEvents() | Out-Null
+    }
+    function Sync-OpenUI {
+        $stOpen.Text = "Status: " + (&{ if ($global:is_open) { "Open" } else { "Closed" } })
+        $btnToggleOpen.Text = (&{ if ($global:is_open) { "Set Closed" } else { "Set Open" } })
+        $status.Refresh()
+        [System.Windows.Forms.Application]::DoEvents() | Out-Null
+    }
+
+    function Populate-Categories([string]$instrumentName) {
+        $lstCategory.Items.Clear(); $lstMaterial.Items.Clear()
+        if ([string]::IsNullOrWhiteSpace($instrumentName)) { return }
+        $groups = $materialGroupsByInstrument[$instrumentName]
+        if ($null -eq $groups) { return }
+        foreach ($g in $groups) { [void]$lstCategory.Items.Add($g.group_name) }
+        if ($lstCategory.Items.Count -gt 0) {
+            $lstCategory.SelectedIndex = [Math]::Min($global:last_selected_index[$MATERIAL_GROUP_SELECT], $lstCategory.Items.Count-1)
+        }
+    }
+    function Populate-Materials([string]$instrumentName, [int]$groupIndex) {
+        $lstMaterial.Items.Clear()
+        if ([string]::IsNullOrWhiteSpace($instrumentName)) { return }
+        $groups = $materialGroupsByInstrument[$instrumentName]
+        if ($null -eq $groups -or $groupIndex -lt 0 -or $groupIndex -ge $groups.Count) { return }
+        $selectedGroup = $groups[$groupIndex]
+        foreach ($m in $selectedGroup.materials_list) { [void]$lstMaterial.Items.Add($m.name) }
+        if ($lstMaterial.Items.Count -gt 0) {
+            $lstMaterial.SelectedIndex = [Math]::Min($global:last_selected_index[$MATERIAL_SELECT], $lstMaterial.Items.Count-1)
+        }
+    }
+    function Get-SelectedMaterial {
+        if ($cmbInstrument.SelectedIndex -lt 0) { return $null }
+        $instrumentName = $cmbInstrument.SelectedItem.ToString()
+        $groups = $materialGroupsByInstrument[$instrumentName]
+        if ($null -eq $groups) { return $null }
+        $gi = $lstCategory.SelectedIndex; $mi = $lstMaterial.SelectedIndex
+        if ($gi -lt 0 -or $mi -lt 0) { return $null }
+        return $groups[$gi].materials_list[$mi]
+    }
+
+    function GUI-SelectPrinter {
+        # Always re-read from disk
+        $rows = Read-PrinterCsv $PrinterCsvPath
+        if (-not $rows -or $rows.Count -eq 0) {
+            [System.Windows.Forms.MessageBox]::Show("No printers found in `n$PrinterCsvPath","QC Label Printer") | Out-Null
+            return
+        }
+
+        # Build display list
+        $items = for ($i=0; $i -lt $rows.Count; $i++) {
+            $r = $rows[$i]
+            $label = if ($r.'is default' -eq '1') { "$($r.'printer name')  ($($r.'ip address'))  [default]" } else { "$($r.'printer name')  ($($r.'ip address'))" }
+            [pscustomobject]@{
+                Label     = $label
+                Name      = $r.'printer name'
+                IpAddress = $r.'ip address'
+                IsDefault = $r.'is default'
+                Index     = $i
+            }
+        }
+
+        $dlg = New-Object Windows.Forms.Form
+        $dlg.Text = "Select Printer"; $dlg.StartPosition = 'CenterParent'
+        $dlg.Size = [System.Drawing.Size]::new(460, 400)
+        $dlg.MinimizeBox = $false; $dlg.MaximizeBox = $false
+
+        $lst = New-Object Windows.Forms.ListBox
+        $lst.Dock = 'Top'; $lst.Height = 280
+        foreach($row in $items){ [void]$lst.Items.Add($row.Label) }
+
+        # preselect current default
+        $idxDefault = (0..($items.Count-1)) | Where-Object { $items[$_].IsDefault -eq '1' } | Select-Object -First 1
+        if ($idxDefault -ne $null) { $lst.SelectedIndex = $idxDefault }
+
+        $panelBtns = New-Object Windows.Forms.FlowLayoutPanel
+        $panelBtns.Dock = 'Bottom'; $panelBtns.FlowDirection = 'RightToLeft'
+        $panelBtns.Padding = [System.Windows.Forms.Padding]::new(6); $panelBtns.Height = 60
+
+        $ok  = New-Object Windows.Forms.Button
+        $ok.Text = "Set Default"; $ok.AutoSize = $true; $ok.DialogResult = [System.Windows.Forms.DialogResult]::None
+
+        $cancel = New-Object Windows.Forms.Button
+        $cancel.Text = "Cancel"; $cancel.AutoSize = $true; $cancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+
+        $panelBtns.Controls.Add($ok); $panelBtns.Controls.Add($cancel)
+        $dlg.Controls.Add($lst); $dlg.Controls.Add($panelBtns)
+
+        $lst.Add_DoubleClick({ if ($lst.SelectedIndex -ge 0) { $ok.PerformClick() } })
+
+        $ok.Add_Click({
+            if ($lst.SelectedIndex -lt 0) { return }
+            $chosen = $items[$lst.SelectedIndex]
+
+            # Update defaults in the in-memory rows
+            for ($i=0; $i -lt $rows.Count; $i++) {
+                $rows[$i].'is default' = if ($i -eq $chosen.Index) { '1' } else { '' }
+            }
+            try {
+                Write-PrinterCsv -path $PrinterCsvPath -rows $rows
+                # Update app state
+                $global:printerIp = $chosen.IpAddress
+                Set-Status
+                $dlg.DialogResult = [System.Windows.Forms.DialogResult]::OK
+                $dlg.Close()
+            } catch {
+                [System.Windows.Forms.MessageBox]::Show("Failed to save printer selection: $_","QC Label Printer",'OK','Error') | Out-Null
+            }
+        })
+
+        [void]$dlg.ShowDialog($form)
+        $dlg.Dispose()
+    }
+
+    function Ensure-CS2500-OpenLock {
+        $inst = if ($cmbInstrument.SelectedIndex -ge 0) { $cmbInstrument.SelectedItem.ToString() } else { "" }
+        if ((@("CS2500","Core Lab") -contains $inst) -and ($lstCategory.SelectedIndex -ge 0 -or $lstMaterial.SelectedIndex -ge 0)) {
+            if (-not $global:is_open) { $global:is_open = $true }
+        }
+        Sync-OpenUI
+    }
+
+    # ---------- events ----------
+    $cmbInstrument.Add_SelectedIndexChanged({
+        $global:last_selected_index[$INSTRUMENT_SELECT] = $cmbInstrument.SelectedIndex
+        Populate-Categories $cmbInstrument.SelectedItem.ToString()
+        $lstMaterial.Items.Clear()
+        Ensure-CS2500-OpenLock
+    })
+    $lstCategory.Add_SelectedIndexChanged({
+        $global:last_selected_index[$MATERIAL_GROUP_SELECT] = $lstCategory.SelectedIndex
+        if ($cmbInstrument.SelectedIndex -ge 0) {
+            Populate-Materials $cmbInstrument.SelectedItem.ToString() $lstCategory.SelectedIndex
+        }
+        Ensure-CS2500-OpenLock
+    })
+    $lstMaterial.Add_DoubleClick({
+        $mat = Get-SelectedMaterial
+        if ($null -ne $mat) {
+            print_label -material $mat
+            $global:last_selected_index[$MATERIAL_SELECT] = $lstMaterial.SelectedIndex
+            Set-Status
+        }
+    })
+
+    $btnPrint.Add_Click({
+        $mat = Get-SelectedMaterial
+        if ($null -eq $mat) {
+            [System.Windows.Forms.MessageBox]::Show("Pick a reagent to print.","QC Label Printer") | Out-Null
+            return
+        }
+        print_label -material $mat
+        $global:last_selected_index[$MATERIAL_SELECT] = $lstMaterial.SelectedIndex
+        Set-Status
+    })
+    $btnToggleOpen.Add_Click({
+        $inst = if ($cmbInstrument.SelectedIndex -ge 0) { $cmbInstrument.SelectedItem.ToString() } else { "" }
+        $atRoot = ($lstCategory.SelectedIndex -lt 0 -and $lstMaterial.SelectedIndex -lt 0)
+        if ((@("CS2500","Core Lab") -contains $inst) -and (-not $atRoot)) { $global:is_open = $true }
+        else { $global:is_open = -not $global:is_open }
+        Sync-OpenUI
+    })
+    $btnFlush.Add_Click({ if ($global:QueuePending) { flush-queue $null }; Set-Status })
+    $btnISE.Add_Click({ electrolyte-labels; Set-Status })
+    $btnSelectPrinter.Add_Click({ GUI-SelectPrinter })
+    $btnHelp.Add_Click({ AdvancedHelp })
+    $btnUpdate.Add_Click({
+        try {
+            powershell.exe -ExecutionPolicy Bypass -File (Join-Path $RootDir 'Huginn.ps1')
+            Start-Process powershell -ArgumentList ('-ExecutionPolicy Bypass -File "' + $PSCommandPath + '"') -NoNewWindow
+            $form.Close()
+        } catch {
+            [System.Windows.Forms.MessageBox]::Show("Update failed: $_","QC Label Printer",'OK','Error') | Out-Null
+        }
+    })
+
+    $form.KeyPreview = $true
+    $form.Add_KeyDown({
+        switch ($_.KeyCode) {
+            'P'     { GUI-SelectPrinter }
+            'E'     { $btnISE.PerformClick() }
+            'F'     { $btnFlush.PerformClick() }
+            'H'     { $btnHelp.PerformClick() }
+            'O'     { $btnToggleOpen.PerformClick() }
+            'Enter' { if ($lstMaterial.Focused) { $btnPrint.PerformClick() } }
+        }
+    })
+
+    # ---------- run ----------
+    $form.Add_Shown({
+        if ($cmbInstrument.Items.Count -gt 0) {
+            $cmbInstrument.SelectedIndex = [Math]::Min($global:last_selected_index[$INSTRUMENT_SELECT], $cmbInstrument.Items.Count-1)
+        }
+        Set-Status
+        Sync-OpenUI
+    })
+
+    [System.Windows.Forms.Application]::EnableVisualStyles()
+    [System.Windows.Forms.Application]::Run($form)
+    return 0
+}
+
 
 function main {
     # initialize per-level cursor history: 0=instrument, 1=group, 2=material
