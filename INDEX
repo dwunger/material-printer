@@ -18,6 +18,7 @@ src/BarcodeGenerator.ps1
 src/BootStrapper.ps1
 src/FrogBog.ps1
 src/ImagePrint.ps1
+src/ISECalibrators.ps1
 src/Main.cs
 src/Materials.psm1
 src/muginn.psm1
@@ -28,4 +29,5 @@ src/ScreenManager.psm1
 src/StartupLogger.ps1
 tests/test_config.txt
 tests/utils.ps1
+
 
