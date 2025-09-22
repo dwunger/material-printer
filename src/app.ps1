@@ -356,6 +356,218 @@ class PrinterManager {
     }
 }
 
+
+class PrinterManagerGUI {
+    [string]$ConfigPath
+    [System.Collections.ArrayList]$Printers
+    [hashtable]$PrinterHeaders   # original header text/order for saving
+    [string]$DefaultPrinterIp
+    [bool]$AutoCreate = $true    # create file if missing with default header
+
+    PrinterManager([string]$configPath) {
+        $this.Printers       = [System.Collections.ArrayList]::new()
+        $this.PrinterHeaders = @{}
+        $this.ConfigPath     = $this.ResolveConfigPath($configPath)
+        $this.LoadConfig()
+        $this.SetDefaultPrinterIp()
+    }
+
+    hidden [string] NormalizeName([string]$s) {
+        if (-not $s) { return $s }
+        return ($s -replace '^\uFEFF','').Trim().ToLowerInvariant()
+    }
+
+    hidden [string] ExpandHome([string]$p) {
+        if ([string]::IsNullOrWhiteSpace($p)) { return $p }
+        if ($p.StartsWith('~')) {
+            $home = $HOME
+            if (-not $home) { $home = [Environment]::GetFolderPath('UserProfile') }
+            if ($p.Length -eq 1) { return $home }
+            return (Join-Path $home $p.Substring(2))  # handles "~/..."
+        }
+        return $p
+    }
+
+    hidden [string] ResolveConfigPath([string]$raw) {
+        if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
+        $p = $this.ExpandHome($raw)
+
+        # 1) If it’s already a rooted absolute path and exists, use it
+        if ([System.IO.Path]::IsPathRooted($p) -and (Test-Path -LiteralPath $p)) { return (Resolve-Path -LiteralPath $p).Path }
+
+        # 2) Try relative to current location
+        try {
+            $cand = Join-Path (Get-Location).Path $p
+            if (Test-Path -LiteralPath $cand) { return (Resolve-Path -LiteralPath $cand).Path }
+        } catch {}
+
+        # 3) Try relative to the process base directory (WinForms can change CWD)
+        try {
+            $base = [AppDomain]::CurrentDomain.BaseDirectory
+            if ($base) {
+                $cand = Join-Path $base $p
+                if (Test-Path -LiteralPath $cand) { return (Resolve-Path -LiteralPath $cand).Path }
+            }
+        } catch {}
+
+        # 4) If it’s an absolute path that doesn’t exist, return as-is (maybe caller will create)
+        if ([System.IO.Path]::IsPathRooted($p)) { return $p }
+
+        # 5) Fallback: assume relative to current location (even if not present yet)
+        return (Join-Path (Get-Location).Path $p)
+    }
+
+    [void]LoadConfig() {
+        $this.Printers.Clear()
+
+        if (-not (Test-Path -LiteralPath $this.ConfigPath)) {
+            if ($this.AutoCreate) {
+                # Create a new CSV with your canonical headers
+                $defaultHeader = 'printer name;ip address;reserved field;is default'
+                New-Item -ItemType Directory -Force -Path (Split-Path -Parent $this.ConfigPath) | Out-Null
+                Set-Content -LiteralPath $this.ConfigPath -Value $defaultHeader -Encoding UTF8
+            } else {
+                Write-Host "Config file does not exist: $($this.ConfigPath)"
+                return
+            }
+        }
+
+        # Read first line - FIXED: Remove -Raw parameter when using -TotalCount
+        try {
+            $firstLine = (Get-Content -LiteralPath $this.ConfigPath -TotalCount 1)
+            if ($firstLine -is [array] -and $firstLine.Count -gt 0) {
+                $firstLine = $firstLine[0]
+            }
+        } catch {
+            Write-Host "Failed to read config header: $_"
+            return
+        }
+    
+        if (-not $firstLine) {
+            Write-Host "Config file is empty: $($this.ConfigPath)"
+            return
+        }
+
+        $firstLineNoBom = $firstLine -replace '^\uFEFF',''
+        $h = $firstLineNoBom -split ';'
+        if ($h.Length -lt 4) {
+            Write-Host "Invalid header row in $($this.ConfigPath)"
+            return
+        }
+
+        $this.PrinterHeaders = @{
+            "Name"          = $h[0]
+            "IpAddress"     = $h[1]
+            "ReservedField" = $h[2]
+            "IsDefault"     = $h[3]
+        }
+
+        # Rest of the method remains the same...
+        $rows = @()
+        try {
+            $rows = Import-Csv -LiteralPath $this.ConfigPath -Delimiter ';'
+        } catch {
+            Write-Host "Failed to parse CSV: $_"
+            return
+        }
+        if (-not $rows -or $rows.Count -eq 0) { return }
+
+        # Build normalized property map
+        $propMap = @{}
+        foreach ($p in $rows[0].PSObject.Properties.Name) {
+            $propMap[ $this.NormalizeName($p) ] = $p
+        }
+
+        function Get-By([object]$row, [hashtable]$pm, [string]$normName) {
+            $actual = $pm[$normName]
+            if ($actual) { return $row.$actual }
+            return $null
+        }
+
+        foreach ($r in $rows) {
+            $name = Get-By $r $propMap 'printer name'
+            $ip   = Get-By $r $propMap 'ip address'
+            $res  = Get-By $r $propMap 'reserved field'
+            $def  = Get-By $r $propMap 'is default'
+
+            $name = if ($name) { "$name".Trim() } else { "" }
+            $ip   = if ($ip)   { "$ip".Trim()   } else { "" }
+            $res  = if ($res)  { "$res".Trim()  } else { "" }
+            $def  = if ($def)  { "$def".Trim()  } else { "" }
+
+            if ([string]::IsNullOrWhiteSpace($name) -and [string]::IsNullOrWhiteSpace($ip)) { continue }
+
+            [void]$this.Printers.Add([pscustomobject]@{
+                Name          = $name
+                IpAddress     = $ip
+                ReservedField = $res
+                IsDefault     = $def
+            })
+        }
+    }
+
+    [void]SaveConfig() {
+        if (-not $this.PrinterHeaders -or $this.PrinterHeaders.Count -lt 4) {
+            $this.PrinterHeaders = @{
+                "Name"          = 'printer name'
+                "IpAddress"     = 'ip address'
+                "ReservedField" = 'reserved field'
+                "IsDefault"     = 'is default'
+            }
+        }
+
+        $out = foreach ($p in $this.Printers) {
+            [pscustomobject]([ordered]@{
+                $this.PrinterHeaders["Name"]          = $p.Name
+                $this.PrinterHeaders["IpAddress"]     = $p.IpAddress
+                $this.PrinterHeaders["ReservedField"] = $p.ReservedField
+                $this.PrinterHeaders["IsDefault"]     = $p.IsDefault
+            })
+        }
+
+        try {
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $this.ConfigPath) | Out-Null
+            $out | Export-Csv -LiteralPath $this.ConfigPath -Delimiter ';' -NoTypeInformation -Encoding UTF8
+        } catch {
+            Write-Host "Failed to save config: $_"
+        }
+    }
+
+    [void]SetDefaultPrinterIp() {
+        $this.DefaultPrinterIp = $null
+        foreach ($p in $this.Printers) {
+            if ($p.IsDefault -eq '1') {
+                $this.DefaultPrinterIp = $p.IpAddress
+                break
+            }
+        }
+    }
+
+    [void]SetDefaultPrinter([string]$printerNameOrIp) {
+        if ([string]::IsNullOrWhiteSpace($printerNameOrIp)) {
+            Write-Host "Printer id is empty."
+            return
+        }
+
+        $found = $false
+        foreach ($p in $this.Printers) {
+            if (($p.Name -eq $printerNameOrIp) -or ($p.IpAddress -eq $printerNameOrIp)) {
+                $p.IsDefault = '1'
+                $this.DefaultPrinterIp = $p.IpAddress
+                $found = $true
+            } else {
+                $p.IsDefault = ''
+            }
+        }
+
+        if ($found) {
+            $this.SaveConfig()
+        } else {
+            Write-Host "Printer not found: $printerNameOrIp"
+        }
+    }
+}
+
 function open-status-helper() {
     # Just got tired of looking at this in main. Should be a ternary
     if ($global:is_open) {
@@ -1212,38 +1424,56 @@ function main_gui {
         return 1
     }
 
-    # Helper: robust CSV read/write that matches your headers exactly
-    function Read-PrinterCsv([string]$path) {
-        if (-not (Test-Path $path)) { return @() }
-        $rows = Import-Csv -Path $path -Delimiter ';'
-        # Normalize property names that contain spaces (PowerShell maps them fine)
-        foreach ($r in $rows) {
-            # trim values; ensure props exist
-            foreach ($k in @('printer name','ip address','reserved field','is default')) {
-                if (-not ($r.PSObject.Properties.Name -contains $k)) { $r | Add-Member -NotePropertyName $k -NotePropertyValue '' }
-                $r.$k = ($r.$k | ForEach-Object { $_ -as [string] }).Trim()
-            }
-        }
-        return $rows
-    }
-    function Write-PrinterCsv([string]$path, $rows) {
-        # Recreate objects with the exact header names so Export-Csv writes the same headers/order
-        $out = foreach ($r in $rows) {
-            [pscustomobject]([ordered]@{
-                'printer name'  = $r.'printer name'
-                'ip address'    = $r.'ip address'
-                'reserved field'= $r.'reserved field'
-                'is default'    = $r.'is default'
-            })
-        }
-        $out | Export-Csv -Path $path -Delimiter ';' -NoTypeInformation -Encoding UTF8
+    # ---------- printers ----------
+    $global:printerManager = [PrinterManager]::new($PrinterCsvPath)
+    if ($global:printerManager.DefaultPrinterIp) {
+        $global:printerIp = $global:printerManager.DefaultPrinterIp
     }
 
-    # Load printers + set global printer IP from default row
-    $printerRows = Read-PrinterCsv $PrinterCsvPath
-    if ($printerRows.Count -gt 0) {
-        $default = $printerRows | Where-Object { $_.'is default' -eq '1' } | Select-Object -First 1
-        if ($default) { $global:printerIp = $default.'ip address' }
+    function Get-PrinterDisplayItems {
+        Write-Host "=== DEBUG: Starting Get-PrinterDisplayItems ===" -ForegroundColor Magenta
+    
+        $rows = $global:printerManager.Printers
+        Write-Host "Rows from printerManager: $($rows.Count)" -ForegroundColor Magenta
+        Write-Host "Rows type: $($rows.GetType().FullName)" -ForegroundColor Magenta
+    
+        if ($rows.Count -gt 0) {
+            Write-Host "First row sample:" -ForegroundColor Magenta
+            $rows[0] | Format-List | Out-Host
+        }
+    
+        $items = @()
+        $idx = 0
+        foreach ($r in $rows) {
+            Write-Host "Processing row $idx : Name=$($r.Name), IP=$($r.IpAddress)" -ForegroundColor Magenta
+        
+            $isDefault = ($r.IsDefault -eq "1")
+            $label = if ($isDefault) {
+                "{0}  ({1})  [default]" -f $r.Name, $r.IpAddress
+            } else {
+                "{0}  ({1})" -f $r.Name, $r.IpAddress
+            }
+            $items += [pscustomobject]@{
+                Label     = $label
+                Name      = $r.Name
+                IpAddress = $r.IpAddress
+                IsDefault = $r.IsDefault
+                Index     = $idx
+            }
+            $idx++
+        }
+    
+        Write-Host "Final items count: $($items.Count)" -ForegroundColor Magenta
+        Write-Host "=== DEBUG: End Get-PrinterDisplayItems ===" -ForegroundColor Magenta
+    
+        return $items
+    }
+
+    function Get-CurrentPrinterName {
+        foreach ($p in $global:printerManager.Printers) {
+            if ($p["IsDefault"] -eq "1") { return $p["Name"] }
+        }
+        return $null
     }
 
     $instrumentList = ($materialGroupsByInstrument.Keys | Sort-Object)
@@ -1311,7 +1541,7 @@ function main_gui {
     # Column 2
     $col2 = New-Object System.Windows.Forms.Panel; $col2.Dock = 'Fill'; $col2.Padding = [System.Windows.Forms.Padding]::new(12)
 
-    $grpActions = New-Object Windows.Forms.GroupBox
+    $grpActions = New-Object System.Windows.Forms.GroupBox
     $grpActions.Text = "Actions"; $grpActions.Font = $fontTitle; $grpActions.Dock = 'Fill'
 
     $stack = New-Object System.Windows.Forms.TableLayoutPanel
@@ -1362,7 +1592,8 @@ function main_gui {
 
     # ---------- helpers ----------
     function Set-Status {
-        $stPrinter.Text = "Printer: $($global:printerIp)"
+        $name = Get-CurrentPrinterName
+        $stPrinter.Text = "Printer: " + (&{ if ($name) { $name } else { $global:printerIp } })
         $stQueue.Text   = if ($global:QueuePending) { "Queue: pending" } else { "Queue: idle" }
         $stVersion.Text = "Version: $($global:VERSION)"
         $status.Refresh()
@@ -1407,24 +1638,35 @@ function main_gui {
     }
 
     function GUI-SelectPrinter {
-        # Always re-read from disk
-        $rows = Read-PrinterCsv $PrinterCsvPath
-        if (-not $rows -or $rows.Count -eq 0) {
+
+        Write-Host "=== DEBUG: Starting GUI-SelectPrinter ===" -ForegroundColor Yellow
+    
+        # Check if printerManager exists and has data
+        Write-Host "Global printerManager exists: $($null -ne $global:printerManager)" -ForegroundColor Cyan
+        if ($global:printerManager) {
+            Write-Host "Printers count: $($global:printerManager.Printers.Count)" -ForegroundColor Cyan
+            Write-Host "First few printers:" -ForegroundColor Cyan
+            $global:printerManager.Printers | Select-Object -First 3 | Format-Table -AutoSize | Out-Host
+        }
+    
+        $items = @(Get-PrinterDisplayItems)
+        Write-Host "Items returned from Get-PrinterDisplayItems: $($items.Count)" -ForegroundColor Cyan
+        Write-Host "Items type: $($items.GetType().FullName)" -ForegroundColor Cyan
+    
+        if ($items.Count -gt 0) {
+            Write-Host "First item details:" -ForegroundColor Cyan
+            $items[0] | Format-List | Out-Host
+        }
+    
+        if ($items.Count -eq 0) {
+            [System.Windows.Forms.MessageBox]::Show("No printers found in the database.", "Warning", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+            return $null
+        }
+    
+        $items = Get-PrinterDisplayItems
+        if (-not $items -or $items.Count -eq 0) {
             [System.Windows.Forms.MessageBox]::Show("No printers found in `n$PrinterCsvPath","QC Label Printer") | Out-Null
             return
-        }
-
-        # Build display list
-        $items = for ($i=0; $i -lt $rows.Count; $i++) {
-            $r = $rows[$i]
-            $label = if ($r.'is default' -eq '1') { "$($r.'printer name')  ($($r.'ip address'))  [default]" } else { "$($r.'printer name')  ($($r.'ip address'))" }
-            [pscustomobject]@{
-                Label     = $label
-                Name      = $r.'printer name'
-                IpAddress = $r.'ip address'
-                IsDefault = $r.'is default'
-                Index     = $i
-            }
         }
 
         $dlg = New-Object Windows.Forms.Form
@@ -1458,15 +1700,10 @@ function main_gui {
         $ok.Add_Click({
             if ($lst.SelectedIndex -lt 0) { return }
             $chosen = $items[$lst.SelectedIndex]
-
-            # Update defaults in the in-memory rows
-            for ($i=0; $i -lt $rows.Count; $i++) {
-                $rows[$i].'is default' = if ($i -eq $chosen.Index) { '1' } else { '' }
-            }
             try {
-                Write-PrinterCsv -path $PrinterCsvPath -rows $rows
-                # Update app state
-                $global:printerIp = $chosen.IpAddress
+                # Legacy manager persists and updates globals
+                $global:printerManager.SetDefaultPrinter($chosen.Name)
+                $global:printerIp = $global:printerManager.DefaultPrinterIp
                 Set-Status
                 $dlg.DialogResult = [System.Windows.Forms.DialogResult]::OK
                 $dlg.Close()
@@ -1566,7 +1803,6 @@ function main_gui {
     [System.Windows.Forms.Application]::Run($form)
     return 0
 }
-
 
 function main {
     # initialize per-level cursor history: 0=instrument, 1=group, 2=material
