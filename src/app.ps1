@@ -1313,7 +1313,12 @@ function AdvancedHelp {
         }
     }
 }
-
+ # side pane
+ $global:side_pane = [StackScreen]::new($PrimaryDisplayMinWidth, 0, 39, $PrimaryDisplayHeight)
+ $global:side_pane.draw_border()
+ $global:side_pane.push_down("Local version: " + $global:VERSION)
+ $global:side_pane.push_down($CYAN_FG + $STARTUP_LOGMSG)
+ 
 function main {
     # initialize per-level cursor history: 0=instrument, 1=group, 2=material
     $global:last_selected_index = @(0, 0, 0)
@@ -1488,7 +1493,7 @@ function main_gui {
     $global:last_selected_index = @(0,0,0)
     $global:menu_level = $INSTRUMENT_SELECT
     $global:QueuePending = $false
-    $global:side_pane = $null
+    #$global:side_pane = $null
     $global:startup = $true
 
     # ---------- data boot ----------
