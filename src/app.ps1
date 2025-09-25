@@ -1853,16 +1853,46 @@ function main_gui {
     $btnISE.Add_Click({ electrolyte-labels; Set-Status })
     $btnSelectPrinter.Add_Click({ GUI-SelectPrinter })
     $btnHelp.Add_Click({ AdvancedHelp })
-    $btnUpdate.Add_Click({
-        try {
-            powershell.exe -ExecutionPolicy Bypass -File .\Huginn.ps1
-            Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\app.ps1"' -NoNewWindow
-            exit
-            $form.Close()
-        } catch {
-            [System.Windows.Forms.MessageBox]::Show("Update failed: $_","QC Label Printer",'OK','Error') | Out-Null
-        }
-    })
+   $btnUpdate.Add_Click({
+     $btnUpdate.Enabled = $false
+     try {
+       $thisScriptPath = $MyInvocation.MyCommand.Path
+       if (-not $thisScriptPath) { $thisScriptPath = $PSCommandPath }
+       $ScriptDir = Split-Path -Parent $thisScriptPath
+       $RootDir   = Split-Path -Parent $ScriptDir
+   
+       $huginnPath = Join-Path $RootDir   'Huginn.ps1'
+       $appPath    = Join-Path $ScriptDir 'app.ps1'
+   
+       $psExe = Join-Path $PSHome 'powershell.exe'
+       if (-not (Test-Path $psExe)) { $psExe = 'powershell.exe' }
+   
+       # Quote the script paths
+       $argHuginn = "-NoProfile -ExecutionPolicy Bypass -File `"$huginnPath`""
+       $argApp    = "-NoProfile -ExecutionPolicy Bypass -File `"$appPath`""
+   
+       # 1) run Huginn and WAIT
+       $p = Start-Process -FilePath $psExe `
+         -ArgumentList $argHuginn `
+         -WorkingDirectory $RootDir `
+         -WindowStyle Normal `
+         -PassThru -Wait
+       if ($p.ExitCode -ne 0) { throw "Huginn exited with code $($p.ExitCode)" }
+   
+       # 2) relaunch app (don’t wait)
+       Start-Process -FilePath $psExe `
+         -ArgumentList $argApp `
+         -WorkingDirectory $RootDir `
+         -WindowStyle Normal | Out-Null
+   
+       # 3) close cleanly
+       $null = $form.BeginInvoke([Action]{ try {$form.Close()} catch {}; try {[System.Windows.Forms.Application]::ExitThread()} catch {} })
+     } catch {
+       [System.Windows.Forms.MessageBox]::Show("Update failed: $($_.Exception.Message)","QC Label Printer",'OK','Error') | Out-Null
+       $btnUpdate.Enabled = $true
+     }
+   })
+
 
     $form.KeyPreview = $true
     $form.Add_KeyDown({
