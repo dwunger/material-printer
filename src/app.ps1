@@ -1646,6 +1646,7 @@ function main_gui {
     [void]$stack.Controls.Add($btnPrint)
     [void]$stack.Controls.Add($btnToggleOpen)
     [void]$stack.Controls.Add($btnFlush)
+    [void]$stack.Controls.Add($btnDowntimeBarcodes)
     [void]$stack.Controls.Add($btnISE)
     [void]$stack.Controls.Add($btnSelectPrinter)
     [void]$stack.Controls.Add($btnHelp)
@@ -1897,6 +1898,7 @@ function main_gui {
     $form.KeyPreview = $true
     $form.Add_KeyDown({
         switch ($_.KeyCode) {
+            'B'     { $btnDowntimeBarcodes.PerformClick() }
             'P'     { GUI-SelectPrinter }
             'E'     { $btnISE.PerformClick() }
             'F'     { $btnFlush.PerformClick() }
