@@ -1634,13 +1634,14 @@ function main_gui {
         return $b
     }
 
-    $btnPrint         = New-ActionButton "Print Selected"
-    $btnToggleOpen    = New-ActionButton "Toggle Open/Closed"
-    $btnFlush         = New-ActionButton "Flush Print Queue"
-    $btnISE           = New-ActionButton "ISE Calibration Labels"
-    $btnSelectPrinter = New-ActionButton "Select Printer..."
-    $btnHelp          = New-ActionButton "Help"
-    $btnUpdate        = New-ActionButton "Update"
+    $btnPrint            = New-ActionButton "Print Selected"
+    $btnToggleOpen       = New-ActionButton "Toggle Open/Closed"
+    $btnFlush            = New-ActionButton "Flush Print Queue"
+    $btnDowntimeBarcodes = New-ActionButton "Downtime Barcode Printer"
+    $btnISE              = New-ActionButton "ISE Calibration Labels"
+    $btnSelectPrinter    = New-ActionButton "Select Printer..."
+    $btnHelp             = New-ActionButton "Help"
+    $btnUpdate           = New-ActionButton "Update"
 
     [void]$stack.Controls.Add($btnPrint)
     [void]$stack.Controls.Add($btnToggleOpen)
@@ -1843,6 +1844,11 @@ function main_gui {
         else { $global:is_open = -not $global:is_open }
         Sync-OpenUI
     })
+
+    $btnDowntimeBarcodes.Add_Click({
+         Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\BarcodeGenerator.ps1"' -NoNewWindow
+    })
+    
     $btnFlush.Add_Click({ if ($global:QueuePending) { flush-queue $null }; Set-Status })
     $btnISE.Add_Click({ electrolyte-labels; Set-Status })
     $btnSelectPrinter.Add_Click({ GUI-SelectPrinter })
