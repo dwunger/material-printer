@@ -203,7 +203,7 @@ $form.Controls.Add($btnNext)
 # NEW: Parse EMR Button
 # =========================
 $btnParse = New-Object System.Windows.Forms.Button
-$btnParse.Location .Location = New-Object System.Drawing.Point(360, 340)   # extra row; avoids shifting existing buttons
+$btnParse.Location = New-Object System.Drawing.Point(360, 340)   # extra row; avoids shifting existing buttons
 $btnParse.Size = New-Object System.Drawing.Size(100, 30)
 $btnParse.Text = "Parse EMR"
 $form.Controls.Add($btnParse)
