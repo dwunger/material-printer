@@ -175,14 +175,14 @@ $form.Controls.Add($listSent)
 $btnScan = New-Object System.Windows.Forms.Button
 $btnScan.Location = New-Object System.Drawing.Point(30, 340)
 $btnScan.Size = New-Object System.Drawing.Size(100, 30)
-$btnScan.Text = "Scan"
+$btnScan.Text = "Scan Barcode"
 $form.Controls.Add($btnScan)
 
 # Button: Send Label
 $btnSend = New-Object System.Windows.Forms.Button
 $btnSend.Location = New-Object System.Drawing.Point(140, 340)
 $btnSend.Size = New-Object System.Drawing.Size(100, 30)
-$btnSend.Text = "Send Label"
+$btnSend.Text = "Print Label"
 $form.Controls.Add($btnSend)
 
 # Button: Next Patient (clears patient fields and sent labels)
@@ -193,17 +193,17 @@ $btnNext.Text = "Next Patient"
 $form.Controls.Add($btnNext)
 
 # Button: Exit
-$btnExit = New-Object System.Windows.Forms.Button
-$btnExit.Location = New-Object System.Drawing.Point(360, 340)
-$btnExit.Size = New-Object System.Drawing.Size(100, 30)
-$btnExit.Text = "Exit"
-$form.Controls.Add($btnExit)
+#$btnExit = New-Object System.Windows.Forms.Button
+#$btnExit.Location = New-Object System.Drawing.Point(360, 340)
+#$btnExit.Size = New-Object System.Drawing.Size(100, 30)
+#$btnExit.Text = "Exit"
+#$form.Controls.Add($btnExit)
 
 # =========================
 # NEW: Parse EMR Button
 # =========================
 $btnParse = New-Object System.Windows.Forms.Button
-$btnParse.Location = New-Object System.Drawing.Point(30, 380)   # extra row; avoids shifting existing buttons
+$btnParse.Location .Location = New-Object System.Drawing.Point(360, 340)   # extra row; avoids shifting existing buttons
 $btnParse.Size = New-Object System.Drawing.Size(100, 30)
 $btnParse.Text = "Parse EMR"
 $form.Controls.Add($btnParse)
@@ -417,7 +417,7 @@ $btnNext.Add_Click({
 })
 
 # --- Event handler: Exit (existing) ---
-$btnExit.Add_Click({ $form.Close() })
+#$btnExit.Add_Click({ $form.Close() })
 
 # =========================
 # NEW: Event handler: Parse EMR
