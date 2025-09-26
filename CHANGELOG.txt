@@ -1,0 +1,121 @@
+ ## UPDATES
+
+ v1.1.38 — September 25, 2025 09:38
+  Removed redundant exit button from downtime barcode generator and moved Parse EMR button.
+
+ v1.1.37 — September 25, 2025 03:19
+  Downtime barcode printer has been re-enabled and force update button got a proper implementation compatible with WinForms.
+
+ v1.1.36 — September 24, 2025 01:04
+  Bug fix: side pane causing failed prints for wash buffers.
+
+ v1.1.35 — September 22, 2025 09:27
+  Basic functionality of GUI is ready (material printing and ISE calibration labels). Rolling out transition from terminal to graphical user interface. Old features will need ported to the new GUI.
+
+ v1.1.35 — September 20, 2025 08:24
+  IT blocked spreadsheet containing resource. Patched out webrequest to online resource file and created a custom mini-Excel engine.
+
+ v1.1.33 — September 11, 2025 09:03
+  Added EPIC info parsing function to downtime barcode printer.
+
+ v1.1.32 — September 3, 2025 10:02
+  Left shift field origin adjustment for barcodes in downtime barcode printer.
+
+ v1.1.30 — August 26, 2025 02:38
+  Handle bad webrequest response gracefully.
+
+ v1.1.28 — July 21, 2025 04:05
+  Wash solutions will now round forward for near-midnight prints.
+
+ v1.1.27 — July 16, 2025 09:00
+  Instrument open lock bug fix.
+
+ v1.1.26 — July 16, 2025 06:41
+  Cursor tracking bug fix.
+
+ v1.1.25 — July 14, 2025 06:53
+  Updated advanced help web documentation.
+
+ v1.1.24 — July 14, 2025 05:32
+  Added special clean solutions to rsrc_info.
+
+ v1.1.23 — July 14, 2025 03:28
+  Add menu-level cursor tracking.
+
+ v1.1.22 — July 12, 2025 02:44
+  Added pepe print feature. It's not what it sounds like.
+
+ v1.1.21 — July 8, 2025 01:57
+  Add Neodymium Magnet Food...
+
+ v1.1.20 — July 3, 2025 03:58
+  Late game growth curve and spawn rate tweaks.
+
+ v1.1.19 — July 2, 2025 10:26
+  Added snake segment render cap.
+
+ v1.1.17 — June 9, 2025 08:49
+  Snek feature update: food pickup logic and death drops
+
+ v1.1.15 — March 28, 2025 09:41
+  Added wash buffer SDS label, send-out stickers, tired pepe, and more blood bank phenotyping instructions.
+
+ v1.1.12 — March 24, 2025 08:09
+  Added sound effects to frog bog.
+
+ v1.1.11 — March 24, 2025 03:45
+  Added Frog Bog mini-game port.
+
+ v1.1.10 — March 19, 2025 07:09
+  Added blood bank phenotyping instructions and birds.
+
+ v1.1.9 — March 17, 2025 06:16
+  Added missing BarcodeGenerator from INDEX.
+
+ v1.1.7 — March 12, 2025 06:10
+  Added help menu for keyboard control mappings, refined misc controls footer, adjusted display sizes, and more bug fixes.
+
+ v1.1.5 — March 11, 2025 07:56
+  Huginn Ported to PS Built-in C# Compiler and improved Snek startup times.
+
+ v1.1.1 — March 3, 2025 06:37
+  Created an asynchronous job to fetch CSV from Google's server to reduce load times.
+
+ v1.1.0 — February 27, 2025 02:12
+  Huginn semantic versioning bug fix
+
+ v1.0.10 — February 26, 2025 11:25
+  Snek only update
+
+ v1.0.8 — February 14, 2025 03:46
+  Snek magnetic food probability tweak.
+
+ v1.0.7 — February 13, 2025 09:47
+  Added Snek mini-game.
+
+ v1.0.6 — February 8, 2025 09:27
+  Bug fix and code refactor.
+
+ v1.0.5 — January 27, 2025 03:08
+  Added runtime update to controls UI, resized primary display, and forced updates now reload app after update completes.
+
+ v1.0.4 — January 27, 2025 00:06
+  Added logging, Muginn, bug fixes, etc.
+
+ v1.0.3 — January 23, 2025 20:51
+  Incremented version before merging into main.
+
+ v1.0.2 — January 21, 2025 06:37
+  Add link to online spreadsheet to UI (Deprecated 1.1.35).
+
+ v1.0.1 — January 19, 2025 22:47
+  Minor patch removing raw unicode characters from source code.
+
+ v1.0.0 — January 16, 2025 09:52
+  Pushed into production. Huginn will now replace the old deployment system.
+
+ v0.1.16 — January 15, 2025 01:25
+  Updated version for testing. Added repository information.
+
+ v0.1.15 — January 6, 2025 06:30
+  Create MANIFEST for version control information.
