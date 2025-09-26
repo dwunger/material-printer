@@ -299,7 +299,7 @@ class PrinterManager {
         if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
         $p = $this.ExpandHome($raw)
 
-        # 1) If it’s already a rooted absolute path and exists, use it
+        # 1) If itâ€™s already a rooted absolute path and exists, use it
         if ([System.IO.Path]::IsPathRooted($p) -and (Test-Path -LiteralPath $p)) { return (Resolve-Path -LiteralPath $p).Path }
 
         # 2) Try relative to current location
@@ -317,7 +317,7 @@ class PrinterManager {
             }
         } catch {}
 
-        # 4) If it’s an absolute path that doesn’t exist, return as-is (maybe caller will create)
+        # 4) If itâ€™s an absolute path that doesnâ€™t exist, return as-is (maybe caller will create)
         if ([System.IO.Path]::IsPathRooted($p)) { return $p }
 
         # 5) Fallback: assume relative to current location (even if not present yet)
@@ -1671,12 +1671,23 @@ function main_gui {
     [void]$form.Controls.Add($main)
     [void]$form.Controls.Add($status)
 
+    # Make the version label a clickable link to the changelog dialog
+    $stVersion.IsLink = $true
+    $stVersion.LinkBehavior = [System.Windows.Forms.LinkBehavior]::HoverUnderline
+    $stVersion.ToolTipText = "View changelog"
+
+    # Click => open the changelog viewer (web-fetched, wrapped text)
+    $stVersion.Add_Click({
+        Show-ChangelogDialog
+    })
+
     # ---------- helpers ----------
     function Set-Status {
         $name = Get-CurrentPrinterName
         $stPrinter.Text = "Printer: " + (&{ if ($name) { $name } else { $global:printerIp } })
         $stQueue.Text   = if ($global:QueuePending) { "Queue: pending" } else { "Queue: idle" }
-        $stVersion.Text = "Version: $($global:VERSION)"
+        $stVersion.Text = "Version: $($global:VERSION)   (changelog)"
+
         $status.Refresh()
         [System.Windows.Forms.Application]::DoEvents() | Out-Null
     }
@@ -1805,6 +1816,43 @@ function main_gui {
         Sync-OpenUI
     }
 
+    function Show-ChangelogDialog {
+        try {
+            $uri = 'https://raw.githubusercontent.com/dwunger/material-printer/refs/heads/main/CHANGELOG.txt'
+            $content = (Invoke-WebRequest -Uri $uri -UseBasicParsing).Content
+
+            # Normalize all newline styles to Windows CRLF so TextBox keeps vertical spacing
+            $content = $content -replace "(`r`n|`n|`r)", "`r`n"
+        } catch {
+            $content = "Failed to fetch changelog.`r`n`r`n$($_.Exception.Message)"
+        }
+
+        $dlg = New-Object Windows.Forms.Form
+        $dlg.Text = "Changelog"
+        $dlg.StartPosition = 'CenterParent'
+        $dlg.Size = [Drawing.Size]::new(700, 500)
+        $dlg.MinimizeBox = $false
+        $dlg.MaximizeBox = $true
+
+        $txt = New-Object Windows.Forms.TextBox
+        $txt.Multiline   = $true
+        $txt.ReadOnly    = $true
+        $txt.WordWrap    = $true       # wrap horizontally
+        $txt.ScrollBars  = 'Vertical'  # vertical scroll only
+        $txt.Dock        = 'Fill'
+        $txt.Text        = $content
+
+        $panel = New-Object Windows.Forms.Panel
+        $panel.Padding = [System.Windows.Forms.Padding]::new(8)
+        $panel.Dock = 'Fill'
+        $panel.Controls.Add($txt)
+
+        $dlg.Controls.Add($panel)
+        [void]$dlg.ShowDialog($form)
+        $dlg.Dispose()
+    }
+
+
     # ---------- events ----------
     $cmbInstrument.Add_SelectedIndexChanged({
         $global:last_selected_index[$INSTRUMENT_SELECT] = $cmbInstrument.SelectedIndex
@@ -1880,7 +1928,7 @@ function main_gui {
          -PassThru -Wait
        if ($p.ExitCode -ne 0) { throw "Huginn exited with code $($p.ExitCode)" }
    
-       # 2) relaunch app (don’t wait)
+       # 2) relaunch app (donâ€™t wait)
        Start-Process -FilePath $psExe `
          -ArgumentList $argApp `
          -WorkingDirectory $RootDir `
