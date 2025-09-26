@@ -1842,6 +1842,8 @@ function main_gui {
         $txt.Dock        = 'Fill'
         $txt.Text        = $content
 
+        $txt.Font = New-Object System.Drawing.Font("Georgia", 11)
+        
         $panel = New-Object Windows.Forms.Panel
         $panel.Padding = [System.Windows.Forms.Padding]::new(8)
         $panel.Dock = 'Fill'
