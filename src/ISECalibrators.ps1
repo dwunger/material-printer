@@ -138,9 +138,9 @@ $layout.Dock = 'Fill'
 $layout.ColumnCount = 2
 $layout.RowCount = 10
 $layout.Padding = [Windows.Forms.Padding]::new(14)
-$layout.ColumnStyles.Add([Windows.Forms.ColumnStyle]::new([Windows.Forms.SizeType]::Percent, 35))
-$layout.ColumnStyles.Add([Windows.Forms.ColumnStyle]::new([Windows.Forms.SizeType]::Percent, 65))
-for($i=0;$i -lt 10;$i++){ $layout.RowStyles.Add([Windows.Forms.RowStyle]::new([Windows.Forms.SizeType]::AutoSize)) }
+[void]$layout.ColumnStyles.Add([Windows.Forms.ColumnStyle]::new([Windows.Forms.SizeType]::Percent, 35))
+[void]$layout.ColumnStyles.Add([Windows.Forms.ColumnStyle]::new([Windows.Forms.SizeType]::Percent, 65))
+for($i=0;$i -lt 10;$i++){ [void]$layout.RowStyles.Add([Windows.Forms.RowStyle]::new([Windows.Forms.SizeType]::AutoSize)) }
 
 # Step title
 $lblStep = New-Object Windows.Forms.Label
@@ -148,48 +148,48 @@ $lblStep.Font = $fontH
 $lblStep.Text = "Step 1 of 5 Low Urine"
 $lblStep.AutoSize = $true
 $layout.SetColumnSpan($lblStep, 2)
-$layout.Controls.Add($lblStep, 0, 0)
+[void]$layout.Controls.Add($lblStep, 0, 0)
 
 # Barcode input
 $lblBarcode = New-Object Windows.Forms.Label
 $lblBarcode.Text = "Scan barcode (or paste):"
 $lblBarcode.Font = $fontB
 $lblBarcode.AutoSize = $true
-$layout.Controls.Add($lblBarcode, 0, 1)
+[void]$layout.Controls.Add($lblBarcode, 0, 1)
 
 $txtBarcode = New-Object Windows.Forms.TextBox
 $txtBarcode.Font = $fontB
 $txtBarcode.Dock = 'Fill'
-$layout.Controls.Add($txtBarcode, 1, 1)
+[void]$layout.Controls.Add($txtBarcode, 1, 1)
 
 $btnParse = New-Object Windows.Forms.Button
 $btnParse.Text = "Parse from Scan"
 $btnParse.Font = $fontB
 $btnParse.AutoSize = $true
-$layout.Controls.Add($btnParse, 1, 2)
+[void]$layout.Controls.Add($btnParse, 1, 2)
 
 # Manual entry
 $lblLot = New-Object Windows.Forms.Label
 $lblLot.Text = "Lot:"
 $lblLot.Font = $fontB
 $lblLot.AutoSize = $true
-$layout.Controls.Add($lblLot, 0, 3)
+[void]$layout.Controls.Add($lblLot, 0, 3)
 
 $txtLot = New-Object Windows.Forms.TextBox
 $txtLot.Font = $fontB
 $txtLot.Dock = 'Fill'
-$layout.Controls.Add($txtLot, 1, 3)
+[void]$layout.Controls.Add($txtLot, 1, 3)
 
 $lblExp = New-Object Windows.Forms.Label
 $lblExp.Text = "Expiration (YYYY-MM-DD):"
 $lblExp.Font = $fontB
 $lblExp.AutoSize = $true
-$layout.Controls.Add($lblExp, 0, 4)
+[void]$layout.Controls.Add($lblExp, 0, 4)
 
 $txtExp = New-Object Windows.Forms.TextBox
 $txtExp.Font = $fontB
 $txtExp.Dock = 'Fill'
-$layout.Controls.Add($txtExp, 1, 4)
+[void]$layout.Controls.Add($txtExp, 1, 4)
 
 # Copies (final step only)
 $lblCopies = New-Object Windows.Forms.Label
@@ -197,7 +197,7 @@ $lblCopies.Text = "Label Copies:"
 $lblCopies.Font = $fontB
 $lblCopies.AutoSize = $true
 $lblCopies.Visible = $false
-$layout.Controls.Add($lblCopies, 0, 5)
+[void]$layout.Controls.Add($lblCopies, 0, 5)
 
 $nudCopies = New-Object Windows.Forms.NumericUpDown
 $nudCopies.Minimum = 1
@@ -206,7 +206,7 @@ $nudCopies.Value = 1
 $nudCopies.Font = $fontB
 $nudCopies.Width = 80
 $nudCopies.Visible = $false
-$layout.Controls.Add($nudCopies, 1, 5)
+[void]$layout.Controls.Add($nudCopies, 1, 5)
 
 # QR options (final step only)
 $chkQr = New-Object Windows.Forms.CheckBox
@@ -215,14 +215,14 @@ $chkQr.Font = $fontB
 $chkQr.AutoSize = $true
 $chkQr.Visible = $false
 $layout.SetColumnSpan($chkQr, 2)
-$layout.Controls.Add($chkQr, 0, 6)
+[void]$layout.Controls.Add($chkQr, 0, 6)
 
 $lblQrCopies = New-Object Windows.Forms.Label
 $lblQrCopies.Text = "QR Copies (each):"
 $lblQrCopies.Font = $fontB
 $lblQrCopies.AutoSize = $true
 $lblQrCopies.Visible = $false
-$layout.Controls.Add($lblQrCopies, 0, 7)
+[void]$layout.Controls.Add($lblQrCopies, 0, 7)
 
 $nudQrCopies = New-Object Windows.Forms.NumericUpDown
 $nudQrCopies.Minimum = 1
@@ -231,14 +231,14 @@ $nudQrCopies.Value = 1
 $nudQrCopies.Font = $fontB
 $nudQrCopies.Width = 80
 $nudQrCopies.Visible = $false
-$layout.Controls.Add($nudQrCopies, 1, 7)
+[void]$layout.Controls.Add($nudQrCopies, 1, 7)
 
 $lblQrMode = New-Object Windows.Forms.Label
 $lblQrMode.Text = "Manual QR format:"
 $lblQrMode.Font = $fontB
 $lblQrMode.AutoSize = $true
 $lblQrMode.Visible = $false
-$layout.Controls.Add($lblQrMode, 0, 8)
+[void]$layout.Controls.Add($lblQrMode, 0, 8)
 
 $cmbQrMode = New-Object Windows.Forms.ComboBox
 $cmbQrMode.DropDownStyle = 'DropDownList'
@@ -248,7 +248,7 @@ $cmbQrMode.DropDownStyle = 'DropDownList'
 ))
 $cmbQrMode.SelectedIndex = 0
 $cmbQrMode.Visible = $false
-$layout.Controls.Add($cmbQrMode, 1, 8)
+[void]$layout.Controls.Add($cmbQrMode, 1, 8)
 
 # Buttons
 $panelBtns = New-Object Windows.Forms.FlowLayoutPanel
@@ -276,8 +276,8 @@ $btnPrint.AutoSize = $true
 $btnPrint.Visible = $false
 $panelBtns.Controls.Add($btnPrint)
 
-$layout.Controls.Add($panelBtns, 0, 9)
-$form.Controls.Add($layout)
+[void]$layout.Controls.Add($panelBtns, 0, 9)
+[void]$form.Controls.Add($layout)
 
 # -------------------- Wizard State (script scope) --------------------
 $script:steps = @("Low Urine","High Urine","Low Serum","High Serum","Copies")
@@ -327,7 +327,7 @@ function Refresh-Step {
             $txtLot.Text = $existing.Lot
             $txtExp.Text = $existing.Exp
         }
-        $txtBarcode.Focus()
+        [void]$txtBarcode.Focus()
     } else {
         $nudCopies.Focus()
     }
