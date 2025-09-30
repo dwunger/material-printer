@@ -1705,11 +1705,11 @@ function main_gui {
     $btnResourceConfig   = New-ActionButton "Resource Config (R)"
     $btnMuginn           = New-ActionButton "Muginn (M)"
     $btnUpdate           = New-ActionButton "Update (U)"
-    $btnSnek             = New-ActionButton "BootStrapper (S)"
+    $btnSnek             = New-ActionButton "Snek (S)"
     $btnCmd              = New-ActionButton "Open Console (C)"
     $btnReload           = New-ActionButton "Reload (F5)"
     $btnFrogBog          = New-ActionButton "FrogBog (G)"
-    $btnPepe             = New-ActionButton "ImagePrint (X)"
+    $btnPepe             = New-ActionButton "Print Image (X)"
 
     # Layout: two columns
     $buttons = @(
