@@ -299,7 +299,7 @@ class PrinterManager {
         if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
         $p = $this.ExpandHome($raw)
 
-        # 1) If itâ€™s already a rooted absolute path and exists, use it
+        # 1) If itÃ¢â‚¬â„¢s already a rooted absolute path and exists, use it
         if ([System.IO.Path]::IsPathRooted($p) -and (Test-Path -LiteralPath $p)) { return (Resolve-Path -LiteralPath $p).Path }
 
         # 2) Try relative to current location
@@ -317,7 +317,7 @@ class PrinterManager {
             }
         } catch {}
 
-        # 4) If itâ€™s an absolute path that doesnâ€™t exist, return as-is (maybe caller will create)
+        # 4) If itÃ¢â‚¬â„¢s an absolute path that doesnÃ¢â‚¬â„¢t exist, return as-is (maybe caller will create)
         if ([System.IO.Path]::IsPathRooted($p)) { return $p }
 
         # 5) Fallback: assume relative to current location (even if not present yet)
@@ -1904,45 +1904,25 @@ function main_gui {
     $btnISE.Add_Click({ electrolyte-labels; Set-Status })
     $btnSelectPrinter.Add_Click({ GUI-SelectPrinter })
     $btnHelp.Add_Click({ AdvancedHelp })
-   $btnUpdate.Add_Click({
-     $btnUpdate.Enabled = $false
-     try {
-       $thisScriptPath = $MyInvocation.MyCommand.Path
-       if (-not $thisScriptPath) { $thisScriptPath = $PSCommandPath }
-       $ScriptDir = Split-Path -Parent $thisScriptPath
-       $RootDir   = Split-Path -Parent $ScriptDir
-   
-       $huginnPath = Join-Path $RootDir   'Huginn.ps1'
-       $appPath    = Join-Path $ScriptDir 'app.ps1'
-   
-       $psExe = Join-Path $PSHome 'powershell.exe'
-       if (-not (Test-Path $psExe)) { $psExe = 'powershell.exe' }
-   
-       # Quote the script paths
-       $argHuginn = "-NoProfile -ExecutionPolicy Bypass -File `"$huginnPath`""
-       $argApp    = "-NoProfile -ExecutionPolicy Bypass -File `"$appPath`""
-   
-       # 1) run Huginn and WAIT
-       $p = Start-Process -FilePath $psExe `
-         -ArgumentList $argHuginn `
-         -WorkingDirectory $RootDir `
-         -WindowStyle Normal `
-         -PassThru -Wait
-       if ($p.ExitCode -ne 0) { throw "Huginn exited with code $($p.ExitCode)" }
-   
-       # 2) relaunch app (donâ€™t wait)
-       Start-Process -FilePath $psExe `
-         -ArgumentList $argApp `
-         -WorkingDirectory $RootDir `
-         -WindowStyle Normal | Out-Null
-   
-       # 3) close cleanly
-       $null = $form.BeginInvoke([Action]{ try {$form.Close()} catch {}; try {[System.Windows.Forms.Application]::ExitThread()} catch {} })
-     } catch {
-       [System.Windows.Forms.MessageBox]::Show("Update failed: $($_.Exception.Message)","QC Label Printer",'OK','Error') | Out-Null
-       $btnUpdate.Enabled = $true
-     }
-   })
+    $btnUpdate.Add_Click({
+      try {
+        $scriptDir = Split-Path -Parent $PSCommandPath
+        $rootDir   = Split-Path -Parent $scriptDir
+        $huginn    = Join-Path $rootDir   'Huginn.ps1'
+        $app       = Join-Path $scriptDir 'app.ps1'
+
+        Start-Process powershell -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File',"`"$huginn`"") `
+          -WorkingDirectory $rootDir -Wait -PassThru | Out-Null
+
+        Start-Process powershell -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File',"`"$app`"") `
+          -WorkingDirectory $rootDir | Out-Null
+
+        $form.Close()
+      } catch {
+        [System.Windows.Forms.MessageBox]::Show("Update failed: $($_.Exception.Message)","QC Label Printer",'OK','Error') | Out-Null
+      }
+    })
+
 
 
     $form.KeyPreview = $true
