@@ -803,7 +803,7 @@ function Set-DefaultPrinter {
  }
 
 function electrolyte-labels {
-    Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\ISECalibrators.ps1"'
+    Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\ISECalibrators.ps1 "' -NoNewWindow
     return
     if ($global:DISABLE_PRINT) {
         return
