@@ -1,5 +1,8 @@
  ## UPDATES
 
+ v1.1.40 — September 30, 2025 04:17
+  Temporarily added buttons for every option that was originally available in the TUI. Button stack will be cleaned up later, but keybinds will remain.
+
  v1.1.38 — September 25, 2025 09:38
   Removed redundant exit button from downtime barcode generator and moved Parse EMR button.
 
