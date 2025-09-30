@@ -876,7 +876,7 @@ function Select-Material {
 }
 
 # Helper function to handle key input
-function Handle-KeyInput {
+function Handle-KeyInput-TUI {
     param (
         [System.Management.Automation.Host.KeyInfo]$key
     )
@@ -934,6 +934,84 @@ function Handle-KeyInput {
         return "frogbog"
     }
     elseif ($key.VirtualKeyCode -eq [System.Windows.Forms.Keys]::OemQuestion) {
+        return "advancedhelp"
+    }
+    return "continue"
+}
+
+# Helper function to handle key input from BOTH WinForms (KeyEventArgs) and Console (Host.KeyInfo)
+function Handle-KeyInput {
+    param(
+        [Parameter(Mandatory)]
+        [object]$key
+    )
+
+    # Normalize to a Windows.Forms.Keys value in $vk
+    $vk = $null
+    if ($key -is [System.Windows.Forms.KeyEventArgs]) {
+        $vk = $key.KeyCode
+    }
+    elseif ($key -is [System.Management.Automation.Host.KeyInfo]) {
+        # Convert VirtualKeyCode int to System.Windows.Forms.Keys enum
+        $vk = [System.Windows.Forms.Keys]$key.VirtualKeyCode
+    }
+    else {
+        return "continue"
+    }
+
+    if ($vk -eq [System.Windows.Forms.Keys]::Escape -or
+        $vk -eq [System.Windows.Forms.Keys]::Left) {
+        return "back"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::O) {
+        return "toggle"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::P) {
+        return "select-printer"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::E) {
+        return "electrolyte-labels"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::D) {
+        return "debug"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::F) {
+        return "flush-queue"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::R) {
+        return "resource-config"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::M) {
+        return "muginn"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::U) {
+        return "update"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::S) {
+        return "snek"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::C) {
+        return "cmd"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::F5) {
+        return "reload"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::X) {
+        return "pepe"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::H) {
+        return "help"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::I) {
+        return "duck"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::B) {
+        return "barcode"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::G) {
+        return "frogbog"
+    }
+    elseif ($vk -eq [System.Windows.Forms.Keys]::OemQuestion) {
         return "advancedhelp"
     }
     return "continue"
@@ -1268,6 +1346,33 @@ function Invoke-DuckAndExplosion {
     Invoke-AsciiExplosion
 }
 
+function Invoke-ProjectScript {
+  param(
+    [Parameter(Mandatory)] [string]$RelativePath,  # e.g. 'src\FrogBog.ps1'
+    [string[]]$Args = @(),
+    [switch]$Wait,
+    [switch]$STA,
+    [switch]$NoNewWindow
+  )
+  $root = Split-Path -Parent $PSScriptRoot
+  $path = Join-Path $root $RelativePath
+
+  $alist = @('-NoProfile','-ExecutionPolicy','Bypass')
+  if ($STA) { $alist += '-STA' }
+  $alist += @('-File', "`"$path`"") + $Args
+
+  $sp = @{
+    FilePath        = 'powershell'
+    ArgumentList    = $alist
+    WorkingDirectory= $root
+  }
+  if ($NoNewWindow) { $sp.NoNewWindow = $true }
+  if ($Wait)        { $sp.Wait        = $true }
+
+  Start-Process @sp
+}
+
+
 function AdvancedHelp {
     # Get the full absolute path to the help file
     $helpFilePath = (Resolve-Path ".\src\Help.html").Path
@@ -1493,7 +1598,6 @@ function main_gui {
     $global:last_selected_index = @(0,0,0)
     $global:menu_level = $INSTRUMENT_SELECT
     $global:QueuePending = $false
-    #$global:side_pane = $null
     $global:startup = $true
 
     # ---------- data boot ----------
@@ -1509,60 +1613,15 @@ function main_gui {
         $global:printerIp = $global:printerManager.DefaultPrinterIp
     }
 
-    function Get-PrinterDisplayItems {
-        Write-Host "=== DEBUG: Starting Get-PrinterDisplayItems ===" -ForegroundColor Magenta
-    
-        $rows = $global:printerManager.Printers
-        Write-Host "Rows from printerManager: $($rows.Count)" -ForegroundColor Magenta
-        Write-Host "Rows type: $($rows.GetType().FullName)" -ForegroundColor Magenta
-    
-        if ($rows.Count -gt 0) {
-            Write-Host "First row sample:" -ForegroundColor Magenta
-            $rows[0] | Format-List | Out-Host
-        }
-    
-        $items = @()
-        $idx = 0
-        foreach ($r in $rows) {
-            Write-Host "Processing row $idx : Name=$($r.Name), IP=$($r.IpAddress)" -ForegroundColor Magenta
-        
-            $isDefault = ($r.IsDefault -eq "1")
-            $label = if ($isDefault) {
-                "{0}  ({1})  [default]" -f $r.Name, $r.IpAddress
-            } else {
-                "{0}  ({1})" -f $r.Name, $r.IpAddress
-            }
-            $items += [pscustomobject]@{
-                Label     = $label
-                Name      = $r.Name
-                IpAddress = $r.IpAddress
-                IsDefault = $r.IsDefault
-                Index     = $idx
-            }
-            $idx++
-        }
-    
-        Write-Host "Final items count: $($items.Count)" -ForegroundColor Magenta
-        Write-Host "=== DEBUG: End Get-PrinterDisplayItems ===" -ForegroundColor Magenta
-    
-        return $items
-    }
-
-    function Get-CurrentPrinterName {
-        foreach ($p in $global:printerManager.Printers) {
-            if ($p["IsDefault"] -eq "1") { return $p["Name"] }
-        }
-        return $null
-    }
-
+    # ---------- lists ----------
     $instrumentList = ($materialGroupsByInstrument.Keys | Sort-Object)
 
     # ---------- UI ----------
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "QC Material Label Printer"
     $form.StartPosition = 'CenterScreen'
-    $form.Size = [System.Drawing.Size]::new(1000, 650)
-    $form.MinimumSize = [System.Drawing.Size]::new(900, 580)
+    $form.Size = [System.Drawing.Size]::new(1100, 700)
+    $form.MinimumSize = [System.Drawing.Size]::new(1000, 620)
 
     $fontTitle = New-Object Drawing.Font("Segoe UI", 10, [Drawing.FontStyle]::Bold)
     $fontBody  = New-Object Drawing.Font("Segoe UI", 9)
@@ -1571,9 +1630,9 @@ function main_gui {
     $main.Dock = 'Fill'
     $main.ColumnCount = 3
     $main.RowCount = 1
-    [void]$main.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 33)))
-    [void]$main.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 34)))
-    [void]$main.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 33)))
+    [void]$main.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 30)))
+    [void]$main.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 35)))
+    [void]$main.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 35)))
     [void]$main.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100)))
 
     # Column 0
@@ -1617,16 +1676,15 @@ function main_gui {
     [void]$col1.Controls.Add($lblMaterial, 0, 0)
     [void]$col1.Controls.Add($lstMaterial, 0, 1)
 
-    # Column 2
+    # Column 2: Actions
     $col2 = New-Object System.Windows.Forms.Panel; $col2.Dock = 'Fill'; $col2.Padding = [System.Windows.Forms.Padding]::new(12)
 
     $grpActions = New-Object System.Windows.Forms.GroupBox
     $grpActions.Text = "Actions"; $grpActions.Font = $fontTitle; $grpActions.Dock = 'Fill'
 
     $stack = New-Object System.Windows.Forms.TableLayoutPanel
-    $stack.Dock = 'Fill'; $stack.ColumnCount = 1; $stack.RowCount = 8
-    for ($i=0; $i -lt 7; $i++) { [void]$stack.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::AutoSize))) }
-    [void]$stack.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100)))
+    $stack.Dock = 'Fill'; $stack.ColumnCount = 2; $stack.RowCount = 12
+    for ($i=0; $i -lt 12; $i++) { [void]$stack.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::AutoSize))) }
 
     function New-ActionButton($text) {
         $b = New-Object Windows.Forms.Button
@@ -1634,23 +1692,32 @@ function main_gui {
         return $b
     }
 
-    $btnPrint            = New-ActionButton "Print Selected"
-    $btnToggleOpen       = New-ActionButton "Toggle Open/Closed"
-    $btnFlush            = New-ActionButton "Flush Print Queue"
-    $btnDowntimeBarcodes = New-ActionButton "Downtime Barcode Printer"
-    $btnISE              = New-ActionButton "ISE Calibration Labels"
-    $btnSelectPrinter    = New-ActionButton "Select Printer..."
-    $btnHelp             = New-ActionButton "Help"
-    $btnUpdate           = New-ActionButton "Update"
+    # Buttons (mapped to original actions)
+    $btnPrint            = New-ActionButton "Print Selected (Enter)"
+    $btnToggleOpen       = New-ActionButton "Toggle Open/Closed (O)"
+    $btnFlush            = New-ActionButton "Flush Print Queue (F)"
+    $btnDowntimeBarcodes = New-ActionButton "Downtime Barcode Printer (B)"
+    $btnISE              = New-ActionButton "ISE Calibration Labels (E)"
+    $btnSelectPrinter    = New-ActionButton "Select Printer... (P)"
+    $btnHelp             = New-ActionButton "Help (H / ?)"
+    $btnAdvancedHelp     = New-ActionButton "Advanced Help (?)"
+    $btnDuck             = New-ActionButton "Duck (I)"
+    $btnResourceConfig   = New-ActionButton "Resource Config (R)"
+    $btnMuginn           = New-ActionButton "Muginn (M)"
+    $btnUpdate           = New-ActionButton "Update (U)"
+    $btnSnek             = New-ActionButton "BootStrapper (S)"
+    $btnCmd              = New-ActionButton "Open Console (C)"
+    $btnReload           = New-ActionButton "Reload (F5)"
+    $btnFrogBog          = New-ActionButton "FrogBog (G)"
+    $btnPepe             = New-ActionButton "ImagePrint (X)"
 
-    [void]$stack.Controls.Add($btnPrint)
-    [void]$stack.Controls.Add($btnToggleOpen)
-    [void]$stack.Controls.Add($btnFlush)
-    [void]$stack.Controls.Add($btnDowntimeBarcodes)
-    [void]$stack.Controls.Add($btnISE)
-    [void]$stack.Controls.Add($btnSelectPrinter)
-    [void]$stack.Controls.Add($btnHelp)
-    [void]$stack.Controls.Add($btnUpdate)
+    # Layout: two columns
+    $buttons = @(
+        $btnPrint, $btnToggleOpen, $btnFlush, $btnDowntimeBarcodes, $btnISE, $btnSelectPrinter,
+        $btnHelp, $btnAdvancedHelp, $btnDuck, $btnResourceConfig, $btnMuginn, $btnUpdate,
+        $btnSnek, $btnCmd, $btnReload, $btnFrogBog, $btnPepe
+    )
+    for ($i=0; $i -lt $buttons.Count; $i++) { [void]$stack.Controls.Add($buttons[$i], ($i % 2), [Math]::Floor($i/2)) }
 
     [void]$grpActions.Controls.Add($stack)
     [void]$col2.Controls.Add($grpActions)
@@ -1666,20 +1733,16 @@ function main_gui {
     $stQueue   = New-Object Windows.Forms.ToolStripStatusLabel
     $stVersion = New-Object Windows.Forms.ToolStripStatusLabel
     $stVersion.Spring = $true; $stVersion.TextAlign = [System.Drawing.ContentAlignment]::MiddleRight
+    $stVersion.IsLink = $true
+    $stVersion.LinkBehavior = [System.Windows.Forms.LinkBehavior]::HoverUnderline
+    $stVersion.ToolTipText = "View changelog"
     [void]$status.Items.AddRange(@($stPrinter,$stOpen,$stQueue,$stVersion))
 
     [void]$form.Controls.Add($main)
     [void]$form.Controls.Add($status)
 
-    # Make the version label a clickable link to the changelog dialog
-    $stVersion.IsLink = $true
-    $stVersion.LinkBehavior = [System.Windows.Forms.LinkBehavior]::HoverUnderline
-    $stVersion.ToolTipText = "View changelog"
-
     # Click => open the changelog viewer (web-fetched, wrapped text)
-    $stVersion.Add_Click({
-        Show-ChangelogDialog
-    })
+    $stVersion.Add_Click({ Show-ChangelogDialog })
 
     # ---------- helpers ----------
     function Set-Status {
@@ -1687,17 +1750,15 @@ function main_gui {
         $stPrinter.Text = "Printer: " + (&{ if ($name) { $name } else { $global:printerIp } })
         $stQueue.Text   = if ($global:QueuePending) { "Queue: pending" } else { "Queue: idle" }
         $stVersion.Text = "Version: $($global:VERSION)   (changelog)"
-
         $status.Refresh()
         [System.Windows.Forms.Application]::DoEvents() | Out-Null
     }
     function Sync-OpenUI {
         $stOpen.Text = "Status: " + (&{ if ($global:is_open) { "Open" } else { "Closed" } })
-        $btnToggleOpen.Text = (&{ if ($global:is_open) { "Set Closed" } else { "Set Open" } })
+        $btnToggleOpen.Text = (&{ if ($global:is_open) { "Set Closed (O)" } else { "Set Open (O)" } })
         $status.Refresh()
         [System.Windows.Forms.Application]::DoEvents() | Out-Null
     }
-
     function Populate-Categories([string]$instrumentName) {
         $lstCategory.Items.Clear(); $lstMaterial.Items.Clear()
         if ([string]::IsNullOrWhiteSpace($instrumentName)) { return }
@@ -1728,72 +1789,83 @@ function main_gui {
         if ($gi -lt 0 -or $mi -lt 0) { return $null }
         return $groups[$gi].materials_list[$mi]
     }
-
+    function Get-CurrentPrinterName {
+        foreach ($p in $global:printerManager.Printers) {
+            if ($p["IsDefault"] -eq "1") { return $p["Name"] }
+        }
+        return $null
+    }
+    function Ensure-CS2500-OpenLock {
+        $inst = if ($cmbInstrument.SelectedIndex -ge 0) { $cmbInstrument.SelectedItem.ToString() } else { "" }
+        if ((@("CS2500","Core Lab") -contains $inst) -and ($lstCategory.SelectedIndex -ge 0 -or $lstMaterial.SelectedIndex -ge 0)) {
+            if (-not $global:is_open) { $global:is_open = $true }
+        }
+        Sync-OpenUI
+    }
+    function Show-ChangelogDialog {
+        try {
+            $uri = 'https://raw.githubusercontent.com/dwunger/material-printer/refs/heads/main/CHANGELOG.txt'
+            $content = (Invoke-WebRequest -Uri $uri -UseBasicParsing).Content
+            $content = $content -replace "(`r`n|`n|`r)", "`r`n"
+        } catch {
+            $content = "Failed to fetch changelog.`r`n`r`n$($_.Exception.Message)"
+        }
+        $dlg = New-Object Windows.Forms.Form
+        $dlg.Text = "Changelog"
+        $dlg.StartPosition = 'CenterParent'
+        $dlg.Size = [Drawing.Size]::new(700, 500)
+        $dlg.MinimizeBox = $false
+        $dlg.MaximizeBox = $true
+        $txt = New-Object Windows.Forms.TextBox
+        $txt.Multiline = $true; $txt.ReadOnly = $true; $txt.WordWrap = $true
+        $txt.ScrollBars = 'Vertical'; $txt.Dock = 'Fill'; $txt.Text = $content
+        $txt.Font = New-Object System.Drawing.Font("Georgia", 11)
+        $panel = New-Object Windows.Forms.Panel
+        $panel.Padding = [System.Windows.Forms.Padding]::new(8); $panel.Dock = 'Fill'
+        $panel.Controls.Add($txt)
+        $dlg.Controls.Add($panel)
+        [void]$dlg.ShowDialog($form)
+        $dlg.Dispose()
+    }
     function GUI-SelectPrinter {
-
-        Write-Host "=== DEBUG: Starting GUI-SelectPrinter ===" -ForegroundColor Yellow
-    
-        # Check if printerManager exists and has data
-        Write-Host "Global printerManager exists: $($null -ne $global:printerManager)" -ForegroundColor Cyan
-        if ($global:printerManager) {
-            Write-Host "Printers count: $($global:printerManager.Printers.Count)" -ForegroundColor Cyan
-            Write-Host "First few printers:" -ForegroundColor Cyan
-            $global:printerManager.Printers | Select-Object -First 3 | Format-Table -AutoSize | Out-Host
-        }
-    
-        $items = @(Get-PrinterDisplayItems)
-        Write-Host "Items returned from Get-PrinterDisplayItems: $($items.Count)" -ForegroundColor Cyan
-        Write-Host "Items type: $($items.GetType().FullName)" -ForegroundColor Cyan
-    
-        if ($items.Count -gt 0) {
-            Write-Host "First item details:" -ForegroundColor Cyan
-            $items[0] | Format-List | Out-Host
-        }
-    
-        if ($items.Count -eq 0) {
-            [System.Windows.Forms.MessageBox]::Show("No printers found in the database.", "Warning", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
-            return $null
-        }
-    
-        $items = Get-PrinterDisplayItems
+        $items = Invoke-ProjectScript -RelativePath 'src\printer_config.csv' # no-op to keep path base; we only need path roots
+        $items = @(
+            foreach ($r in $global:printerManager.Printers) {
+                [pscustomobject]@{
+                    Label     = ("{0}  ({1}){2}" -f $r.Name, $r.IpAddress, $(if ($r.IsDefault -eq "1") {"  [default]"} else {""}))
+                    Name      = $r.Name
+                    IpAddress = $r.IpAddress
+                    IsDefault = $r.IsDefault
+                }
+            }
+        )
         if (-not $items -or $items.Count -eq 0) {
             [System.Windows.Forms.MessageBox]::Show("No printers found in `n$PrinterCsvPath","QC Label Printer") | Out-Null
             return
         }
-
         $dlg = New-Object Windows.Forms.Form
         $dlg.Text = "Select Printer"; $dlg.StartPosition = 'CenterParent'
         $dlg.Size = [System.Drawing.Size]::new(460, 400)
         $dlg.MinimizeBox = $false; $dlg.MaximizeBox = $false
-
         $lst = New-Object Windows.Forms.ListBox
         $lst.Dock = 'Top'; $lst.Height = 280
         foreach($row in $items){ [void]$lst.Items.Add($row.Label) }
-
-        # preselect current default
         $idxDefault = (0..($items.Count-1)) | Where-Object { $items[$_].IsDefault -eq '1' } | Select-Object -First 1
         if ($idxDefault -ne $null) { $lst.SelectedIndex = $idxDefault }
-
         $panelBtns = New-Object Windows.Forms.FlowLayoutPanel
         $panelBtns.Dock = 'Bottom'; $panelBtns.FlowDirection = 'RightToLeft'
         $panelBtns.Padding = [System.Windows.Forms.Padding]::new(6); $panelBtns.Height = 60
-
         $ok  = New-Object Windows.Forms.Button
         $ok.Text = "Set Default"; $ok.AutoSize = $true; $ok.DialogResult = [System.Windows.Forms.DialogResult]::None
-
         $cancel = New-Object Windows.Forms.Button
         $cancel.Text = "Cancel"; $cancel.AutoSize = $true; $cancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
-
         $panelBtns.Controls.Add($ok); $panelBtns.Controls.Add($cancel)
         $dlg.Controls.Add($lst); $dlg.Controls.Add($panelBtns)
-
         $lst.Add_DoubleClick({ if ($lst.SelectedIndex -ge 0) { $ok.PerformClick() } })
-
         $ok.Add_Click({
             if ($lst.SelectedIndex -lt 0) { return }
             $chosen = $items[$lst.SelectedIndex]
             try {
-                # Legacy manager persists and updates globals
                 $global:printerManager.SetDefaultPrinter($chosen.Name)
                 $global:printerIp = $global:printerManager.DefaultPrinterIp
                 Set-Status
@@ -1803,59 +1875,83 @@ function main_gui {
                 [System.Windows.Forms.MessageBox]::Show("Failed to save printer selection: $_","QC Label Printer",'OK','Error') | Out-Null
             }
         })
-
         [void]$dlg.ShowDialog($form)
         $dlg.Dispose()
     }
 
-    function Ensure-CS2500-OpenLock {
-        $inst = if ($cmbInstrument.SelectedIndex -ge 0) { $cmbInstrument.SelectedItem.ToString() } else { "" }
-        if ((@("CS2500","Core Lab") -contains $inst) -and ($lstCategory.SelectedIndex -ge 0 -or $lstMaterial.SelectedIndex -ge 0)) {
-            if (-not $global:is_open) { $global:is_open = $true }
+    # ---------- action lambdas (shared by buttons & keys) ----------
+    $doPrint = {
+        $mat = Get-SelectedMaterial
+        if ($null -eq $mat) {
+            [System.Windows.Forms.MessageBox]::Show("Pick a reagent to print.","QC Label Printer") | Out-Null
+            return
         }
+        print_label -material $mat
+        $global:last_selected_index[$MATERIAL_SELECT] = $lstMaterial.SelectedIndex
+        Set-Status
+    }
+    $doToggle = {
+        $inst = if ($cmbInstrument.SelectedIndex -ge 0) { $cmbInstrument.SelectedItem.ToString() } else { "" }
+        $atRoot = ($lstCategory.SelectedIndex -lt 0 -and $lstMaterial.SelectedIndex -lt 0)
+        if ((@("CS2500","Core Lab") -contains $inst) -and (-not $atRoot)) { $global:is_open = $true }
+        else { $global:is_open = -not $global:is_open }
         Sync-OpenUI
     }
-
-    function Show-ChangelogDialog {
-        try {
-            $uri = 'https://raw.githubusercontent.com/dwunger/material-printer/refs/heads/main/CHANGELOG.txt'
-            $content = (Invoke-WebRequest -Uri $uri -UseBasicParsing).Content
-
-            # Normalize all newline styles to Windows CRLF so TextBox keeps vertical spacing
-            $content = $content -replace "(`r`n|`n|`r)", "`r`n"
-        } catch {
-            $content = "Failed to fetch changelog.`r`n`r`n$($_.Exception.Message)"
-        }
-
-        $dlg = New-Object Windows.Forms.Form
-        $dlg.Text = "Changelog"
-        $dlg.StartPosition = 'CenterParent'
-        $dlg.Size = [Drawing.Size]::new(700, 500)
-        $dlg.MinimizeBox = $false
-        $dlg.MaximizeBox = $true
-
-        $txt = New-Object Windows.Forms.TextBox
-        $txt.Multiline   = $true
-        $txt.ReadOnly    = $true
-        $txt.WordWrap    = $true       # wrap horizontally
-        $txt.ScrollBars  = 'Vertical'  # vertical scroll only
-        $txt.Dock        = 'Fill'
-        $txt.Text        = $content
-
-        $txt.Font = New-Object System.Drawing.Font("Georgia", 11)
-        
-        $panel = New-Object Windows.Forms.Panel
-        $panel.Padding = [System.Windows.Forms.Padding]::new(8)
-        $panel.Dock = 'Fill'
-        $panel.Controls.Add($txt)
-
-        $dlg.Controls.Add($panel)
-        [void]$dlg.ShowDialog($form)
-        $dlg.Dispose()
+    $doFlush = { if ($global:QueuePending) { flush-queue $null }; Set-Status }
+    $doDowntime = { Invoke-ProjectScript -RelativePath 'src\BarcodeGenerator.ps1' -NoNewWindow }
+    $doISE = { electrolyte-labels; Set-Status }
+    $doSelectPrinter = { GUI-SelectPrinter }
+    $doHelp = { ayuda; AdvancedHelp }
+    $doAdvancedHelp = { AdvancedHelp }
+    $doDuck = { Invoke-DuckAndExplosion; Set-Status }
+    $doResourceConfig = {
+        $browser = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+        $link    = 'https://docs.google.com/spreadsheets/d/15leQ_Hy9kxP_PmoBwOqyDEln9Vvy5Bpilqm4LrJ56lE/edit?usp=sharing'
+        if (Test-Path $browser) { & $browser $link } else { [System.Windows.Forms.MessageBox]::Show("Browser unavailable.","QC Label Printer") | Out-Null }
+    }
+    $doMuginn = {
+        if (Get-Command Muginn -ErrorAction SilentlyContinue) { Muginn }
+        else { [System.Windows.Forms.MessageBox]::Show("Muginn function not found.","QC Label Printer") | Out-Null }
+    }
+    $doUpdate = {
+        Invoke-ProjectScript -RelativePath 'Huginn.ps1' -Wait
+        Invoke-ProjectScript -RelativePath 'src\app.ps1'
+        $form.Close()
+    }
+    $doSnek = { Invoke-ProjectScript -RelativePath 'src\BootStrapper.ps1' -Wait -NoNewWindow }
+    $doCmd = {
+        Start-Process powershell_ise.exe -ArgumentList "`"$ScriptDir\app.ps1`""
+        Start-Process powershell.exe
     }
 
+    $doDebug = { $host.EnterNestedPrompt() }
+    $doReload = {
+        Start-Process conhost.exe -ArgumentList 'powershell -ExecutionPolicy Bypass -File ".\src\app.ps1"'
+        $form.Close()
+    }
+    $doFrogBog = { Invoke-ProjectScript -RelativePath 'src\FrogBog.ps1' -STA -NoNewWindow }
+    $doPepe = { Invoke-ProjectScript -RelativePath 'src\ImagePrint.ps1' -Args @('-PrinterIp', $global:printerIp) -NoNewWindow }
 
-    # ---------- events ----------
+    # ---------- button bindings ----------
+    $btnPrint.Add_Click($doPrint)
+    $btnToggleOpen.Add_Click($doToggle)
+    $btnFlush.Add_Click($doFlush)
+    $btnDowntimeBarcodes.Add_Click($doDowntime)
+    $btnISE.Add_Click($doISE)
+    $btnSelectPrinter.Add_Click($doSelectPrinter)
+    $btnHelp.Add_Click($doHelp)
+    $btnAdvancedHelp.Add_Click($doAdvancedHelp)
+    $btnDuck.Add_Click($doDuck)
+    $btnResourceConfig.Add_Click($doResourceConfig)
+    $btnMuginn.Add_Click($doMuginn)
+    $btnUpdate.Add_Click($doUpdate)
+    $btnSnek.Add_Click($doSnek)
+    $btnCmd.Add_Click($doCmd)
+    $btnReload.Add_Click($doReload)
+    $btnFrogBog.Add_Click($doFrogBog)
+    $btnPepe.Add_Click($doPepe)
+
+    # ---------- selection events ----------
     $cmbInstrument.Add_SelectedIndexChanged({
         $global:last_selected_index[$INSTRUMENT_SELECT] = $cmbInstrument.SelectedIndex
         Populate-Categories $cmbInstrument.SelectedItem.ToString()
@@ -1869,72 +1965,34 @@ function main_gui {
         }
         Ensure-CS2500-OpenLock
     })
-    $lstMaterial.Add_DoubleClick({
-        $mat = Get-SelectedMaterial
-        if ($null -ne $mat) {
-            print_label -material $mat
-            $global:last_selected_index[$MATERIAL_SELECT] = $lstMaterial.SelectedIndex
-            Set-Status
-        }
-    })
+    $lstMaterial.Add_DoubleClick({ & $doPrint })
 
-    $btnPrint.Add_Click({
-        $mat = Get-SelectedMaterial
-        if ($null -eq $mat) {
-            [System.Windows.Forms.MessageBox]::Show("Pick a reagent to print.","QC Label Printer") | Out-Null
-            return
-        }
-        print_label -material $mat
-        $global:last_selected_index[$MATERIAL_SELECT] = $lstMaterial.SelectedIndex
-        Set-Status
-    })
-    $btnToggleOpen.Add_Click({
-        $inst = if ($cmbInstrument.SelectedIndex -ge 0) { $cmbInstrument.SelectedItem.ToString() } else { "" }
-        $atRoot = ($lstCategory.SelectedIndex -lt 0 -and $lstMaterial.SelectedIndex -lt 0)
-        if ((@("CS2500","Core Lab") -contains $inst) -and (-not $atRoot)) { $global:is_open = $true }
-        else { $global:is_open = -not $global:is_open }
-        Sync-OpenUI
-    })
-
-    $btnDowntimeBarcodes.Add_Click({
-         Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File ".\src\BarcodeGenerator.ps1"' -NoNewWindow
-    })
-    
-    $btnFlush.Add_Click({ if ($global:QueuePending) { flush-queue $null }; Set-Status })
-    $btnISE.Add_Click({ electrolyte-labels; Set-Status })
-    $btnSelectPrinter.Add_Click({ GUI-SelectPrinter })
-    $btnHelp.Add_Click({ AdvancedHelp })
-    $btnUpdate.Add_Click({
-      try {
-        $scriptDir = Split-Path -Parent $PSCommandPath
-        $rootDir   = Split-Path -Parent $scriptDir
-        $huginn    = Join-Path $rootDir   'Huginn.ps1'
-        $app       = Join-Path $scriptDir 'app.ps1'
-
-        Start-Process powershell -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File',"`"$huginn`"") `
-          -WorkingDirectory $rootDir -Wait -PassThru | Out-Null
-
-        Start-Process powershell -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File',"`"$app`"") `
-          -WorkingDirectory $rootDir | Out-Null
-
-        $form.Close()
-      } catch {
-        [System.Windows.Forms.MessageBox]::Show("Update failed: $($_.Exception.Message)","QC Label Printer",'OK','Error') | Out-Null
-      }
-    })
-
-
-
+    # ---------- key mappings (use your Handle-KeyInput) ----------
     $form.KeyPreview = $true
     $form.Add_KeyDown({
-        switch ($_.KeyCode) {
-            'B'     { $btnDowntimeBarcodes.PerformClick() }
-            'P'     { GUI-SelectPrinter }
-            'E'     { $btnISE.PerformClick() }
-            'F'     { $btnFlush.PerformClick() }
-            'H'     { $btnHelp.PerformClick() }
-            'O'     { $btnToggleOpen.PerformClick() }
-            'Enter' { if ($lstMaterial.Focused) { $btnPrint.PerformClick() } }
+        $action = Handle-KeyInput -key $_
+        switch ($action) {
+            "back"               { }  # (no-op in GUI navigation)
+            "toggle"             { & $doToggle }
+            "select-printer"     { & $doSelectPrinter }
+            "electrolyte-labels" { & $doISE }
+            "debug"              { & $doDebug }
+            "flush-queue"        { & $doFlush }
+            "resource-config"    { & $doResourceConfig }
+            "muginn"             { & $doMuginn }
+            "update"             { & $doUpdate }
+            "snek"               { & $doSnek }
+            "cmd"                { & $doCmd }
+            "reload"             { & $doReload }
+            "pepe"               { & $doPepe }
+            "help"               { & $doHelp }
+            "duck"               { & $doDuck }
+            "barcode"            { & $doDowntime }
+            "frogbog"            { & $doFrogBog }
+            "advancedhelp"       { & $doAdvancedHelp }
+            default {
+                if ($_.KeyCode -eq 'Enter' -and $lstMaterial.Focused) { & $doPrint }
+            }
         }
     })
 
