@@ -119,13 +119,6 @@ $STARTUP_LOGMSG = $STARTUP_LOGMSG -replace "`n", "`n$CYAN_FG"
 #  [<CommonParameters>]           # Common parameters that can be used with most cmdlets.
 ###################################IMPORTS#################################################
 
-
-##########################
-
-
-
-#########################
-
 # Function to read contents and return
 function Get-FileContent {
     param ([string]$filePath)
@@ -149,8 +142,6 @@ function count() {
 function abs($value) {
     return [Math]::Abs($value)
 }
-
-
 
 ####################################################################################################################################################
 
@@ -260,7 +251,6 @@ class Menu {
         return -1
     }
 }
-##################################################################### MATERIALS #########################################################################
 
 ##################################################################### PRINTER #########################################################################
 
@@ -299,7 +289,7 @@ class PrinterManager {
         if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
         $p = $this.ExpandHome($raw)
 
-        # 1) If itÃ¢â‚¬â„¢s already a rooted absolute path and exists, use it
+        # 1) If itÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢s already a rooted absolute path and exists, use it
         if ([System.IO.Path]::IsPathRooted($p) -and (Test-Path -LiteralPath $p)) { return (Resolve-Path -LiteralPath $p).Path }
 
         # 2) Try relative to current location
@@ -317,7 +307,7 @@ class PrinterManager {
             }
         } catch {}
 
-        # 4) If itÃ¢â‚¬â„¢s an absolute path that doesnÃ¢â‚¬â„¢t exist, return as-is (maybe caller will create)
+        # 4) If itÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢s an absolute path that doesnÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢t exist, return as-is (maybe caller will create)
         if ([System.IO.Path]::IsPathRooted($p)) { return $p }
 
         # 5) Fallback: assume relative to current location (even if not present yet)
@@ -475,8 +465,6 @@ class PrinterManager {
     }
 }
 
-
-
 function open-status-helper() {
     # Just got tired of looking at this in main. Should be a ternary
     if ($global:is_open) {
@@ -599,7 +587,6 @@ function print_label([Material] $material){
     }
 }
 
-###################################END PRINT LABEL SECTION##################################
 
 ###################################ELECTROLYTE LABELS#######################################
 
@@ -828,9 +815,6 @@ function electrolyte-labels {
  
      Set-DefaultPrinter -printerID $savedIP
 }
-
-###################################ELECTROLYTE LABELS#######################################
-
 
 #########################################MENU HELPER########################################
 # Helper function for instrument selection
@@ -1683,7 +1667,7 @@ function main_gui {
     $grpActions.Text = "Actions"; $grpActions.Font = $fontTitle; $grpActions.Dock = 'Fill'
 
     $stack = New-Object System.Windows.Forms.TableLayoutPanel
-    $stack.Dock = 'Fill'; $stack.ColumnCount = 2; $stack.RowCount = 12
+    $stack.Dock = 'Fill'; $stack.ColumnCount = 1; $stack.RowCount = 12
     for ($i=0; $i -lt 12; $i++) { [void]$stack.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::AutoSize))) }
 
     function New-ActionButton($text) {
@@ -1713,9 +1697,8 @@ function main_gui {
 
     # Layout: two columns
     $buttons = @(
-        $btnPrint, $btnToggleOpen, $btnFlush, $btnDowntimeBarcodes, $btnISE, $btnSelectPrinter,
-        $btnHelp, $btnAdvancedHelp, $btnDuck, $btnResourceConfig, $btnMuginn, $btnUpdate,
-        $btnSnek, $btnCmd, $btnReload, $btnFrogBog, $btnPepe
+        $btnPrint, $btnToggleOpen, $btnSelectPrinter, $btnFlush, $btnISE, $btnDowntimeBarcodes,  
+        $btnUpdate, $btnPepe, $btnAdvancedHelp
     )
     for ($i=0; $i -lt $buttons.Count; $i++) { [void]$stack.Controls.Add($buttons[$i], ($i % 2), [Math]::Floor($i/2)) }
 
@@ -1748,7 +1731,7 @@ function main_gui {
     function Set-Status {
         $name = Get-CurrentPrinterName
         $stPrinter.Text = "Printer: " + (&{ if ($name) { $name } else { $global:printerIp } })
-        $stQueue.Text   = if ($global:QueuePending) { "Queue: pending" } else { "Queue: idle" }
+        $stQueue.Text   = if ($global:QueuePending) { "Queue: Print pending" } else { "Queue: Empty" }
         $stVersion.Text = "Version: $($global:VERSION)   (changelog)"
         $status.Refresh()
         [System.Windows.Forms.Application]::DoEvents() | Out-Null
@@ -1905,9 +1888,10 @@ function main_gui {
     $doAdvancedHelp = { AdvancedHelp }
     $doDuck = { Invoke-DuckAndExplosion; Set-Status }
     $doResourceConfig = {
-        $browser = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
-        $link    = 'https://docs.google.com/spreadsheets/d/15leQ_Hy9kxP_PmoBwOqyDEln9Vvy5Bpilqm4LrJ56lE/edit?usp=sharing'
-        if (Test-Path $browser) { & $browser $link } else { [System.Windows.Forms.MessageBox]::Show("Browser unavailable.","QC Label Printer") | Out-Null }
+        #$browser = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+        #$link    = 'https://docs.google.com/spreadsheets/d/15leQ_Hy9kxP_PmoBwOqyDEln9Vvy5Bpilqm4LrJ56lE/edit?usp=sharing'
+        #if (Test-Path $browser) { & $browser $link } else { [System.Windows.Forms.MessageBox]::Show("Browser unavailable.","QC Label Printer") | Out-Null }
+        Start-Process notepad.exe -ArgumentList "`"$ScriptDir\excel_rsrc.csv`""
     }
     $doMuginn = {
         if (Get-Command Muginn -ErrorAction SilentlyContinue) { Muginn }
@@ -1939,16 +1923,16 @@ function main_gui {
     $btnDowntimeBarcodes.Add_Click($doDowntime)
     $btnISE.Add_Click($doISE)
     $btnSelectPrinter.Add_Click($doSelectPrinter)
-    $btnHelp.Add_Click($doHelp)
+    #$btnHelp.Add_Click($doHelp)
     $btnAdvancedHelp.Add_Click($doAdvancedHelp)
-    $btnDuck.Add_Click($doDuck)
-    $btnResourceConfig.Add_Click($doResourceConfig)
-    $btnMuginn.Add_Click($doMuginn)
+    #$btnDuck.Add_Click($doDuck)
+    #$btnResourceConfig.Add_Click($doResourceConfig)
+    #$btnMuginn.Add_Click($doMuginn)
     $btnUpdate.Add_Click($doUpdate)
-    $btnSnek.Add_Click($doSnek)
-    $btnCmd.Add_Click($doCmd)
-    $btnReload.Add_Click($doReload)
-    $btnFrogBog.Add_Click($doFrogBog)
+    #$btnSnek.Add_Click($doSnek)
+    #$btnCmd.Add_Click($doCmd)
+    #$btnReload.Add_Click($doReload)
+    #$btnFrogBog.Add_Click($doFrogBog)
     $btnPepe.Add_Click($doPepe)
 
     # ---------- selection events ----------
