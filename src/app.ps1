@@ -289,7 +289,7 @@ class PrinterManager {
         if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
         $p = $this.ExpandHome($raw)
 
-        # 1) If itÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢s already a rooted absolute path and exists, use it
+        # 1) If itÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢s already a rooted absolute path and exists, use it
         if ([System.IO.Path]::IsPathRooted($p) -and (Test-Path -LiteralPath $p)) { return (Resolve-Path -LiteralPath $p).Path }
 
         # 2) Try relative to current location
@@ -307,7 +307,7 @@ class PrinterManager {
             }
         } catch {}
 
-        # 4) If itÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢s an absolute path that doesnÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢t exist, return as-is (maybe caller will create)
+        # 4) If itÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢s an absolute path that doesnÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢t exist, return as-is (maybe caller will create)
         if ([System.IO.Path]::IsPathRooted($p)) { return $p }
 
         # 5) Fallback: assume relative to current location (even if not present yet)
@@ -1736,23 +1736,23 @@ function main_gui {
         $status.Refresh()
         [System.Windows.Forms.Application]::DoEvents() | Out-Null
     }
-   function Sync-OpenUI {
-       $isOpen = $global:is_open
-   
-       # Text + button label
-       $stOpen.Text     = "Status: " + $( if ($isOpen) { "Open" } else { "Closed" } )
-       $btnToggleOpen.Text = $( if ($isOpen) { "Set Closed (O)" } else { "Set Open (O)" } )
-   
-       # Bright colors for the status label
-       if ($isOpen) {
-           $stOpen.ForeColor = [System.Drawing.Color]::Lime   # bright green
-       } else {
-           $stOpen.ForeColor = [System.Drawing.Color]::Red    # bright red
-       }
-   
-       $status.Refresh()
-       [System.Windows.Forms.Application]::DoEvents() | Out-Null
-   }
+    function Sync-OpenUI {
+        $isOpen = $global:is_open
+
+        # Text + button label
+        $stOpen.Text     = "Status: " + $( if ($isOpen) { "Open" } else { "Closed" } )
+        $btnToggleOpen.Text = $( if ($isOpen) { "Set Closed (O)" } else { "Set Open (O)" } )
+
+        # Bright colors for the status label
+        if ($isOpen) {
+            $stOpen.ForeColor = [System.Drawing.Color]::FromArgb(0,230,0)
+        } else {
+            $stOpen.ForeColor = [System.Drawing.Color]::Red    # bright red
+        }
+
+        $status.Refresh()
+        [System.Windows.Forms.Application]::DoEvents() | Out-Null
+    }
 
 
     function Populate-Categories([string]$instrumentName) {
