@@ -1,4 +1,8 @@
  ## UPDATES
+
+ v1.1.43 — October 1, 2025 06:43
+  Made open status indicator colorful.
+
  v1.1.42 — October 1, 2025 06:43
   Removed buttons, but left keybinds. Reorganized button stack. Remapped resource config action to notepad.
 
