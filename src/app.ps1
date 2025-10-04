@@ -1736,12 +1736,26 @@ function main_gui {
         $status.Refresh()
         [System.Windows.Forms.Application]::DoEvents() | Out-Null
     }
-    function Sync-OpenUI {
-        $stOpen.Text = "Status: " + (&{ if ($global:is_open) { "Open" } else { "Closed" } })
-        $btnToggleOpen.Text = (&{ if ($global:is_open) { "Set Closed (O)" } else { "Set Open (O)" } })
-        $status.Refresh()
-        [System.Windows.Forms.Application]::DoEvents() | Out-Null
-    }
+   function Sync-OpenUI {
+       $isOpen = $global:is_open
+   
+       $stOpen.Text = "Status: " + (if ($isOpen) { "Open" } else { "Closed" })
+       $btnToggleOpen.Text = if ($isOpen) { "Set Closed (O)" } else { "Set Open (O)" }
+   
+       # Bright colors for the toolbar indicator
+       if ($isOpen) {
+           $stOpen.ForeColor = [System.Drawing.Color]::Lime   # bright green
+           # Optional: make it pop a bit more
+           # $stOpen.Font = New-Object System.Drawing.Font($stOpen.Owner.Font, [System.Drawing.FontStyle]::Bold)
+       } else {
+           $stOpen.ForeColor = [System.Drawing.Color]::Red    # bright red
+           # $stOpen.Font = New-Object System.Drawing.Font($stOpen.Owner.Font, [System.Drawing.FontStyle]::Bold)
+       }
+   
+       $status.Refresh()
+       [System.Windows.Forms.Application]::DoEvents() | Out-Null
+   }
+
     function Populate-Categories([string]$instrumentName) {
         $lstCategory.Items.Clear(); $lstMaterial.Items.Clear()
         if ([string]::IsNullOrWhiteSpace($instrumentName)) { return }
