@@ -289,7 +289,7 @@ class PrinterManager {
         if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
         $p = $this.ExpandHome($raw)
 
-        # 1) If itÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢s already a rooted absolute path and exists, use it
+        # 1) If itÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢s already a rooted absolute path and exists, use it
         if ([System.IO.Path]::IsPathRooted($p) -and (Test-Path -LiteralPath $p)) { return (Resolve-Path -LiteralPath $p).Path }
 
         # 2) Try relative to current location
@@ -307,7 +307,7 @@ class PrinterManager {
             }
         } catch {}
 
-        # 4) If itÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢s an absolute path that doesnÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢t exist, return as-is (maybe caller will create)
+        # 4) If itÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢s an absolute path that doesnÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢t exist, return as-is (maybe caller will create)
         if ([System.IO.Path]::IsPathRooted($p)) { return $p }
 
         # 5) Fallback: assume relative to current location (even if not present yet)
@@ -1730,7 +1730,8 @@ function main_gui {
     # ---------- helpers ----------
     function Set-Status {
         $name = Get-CurrentPrinterName
-        $stPrinter.Text = "Printer: " + (&{ if ($name) { $name } else { $global:printerIp } })
+        $stPrinter.Text = "Printer: $((Resolve-DnsName $global:printerIp).NameHost.Split('.')[0].ToUpper())"
+
         $stQueue.Text   = if ($global:QueuePending) { "Queue: Print pending" } else { "Queue: Empty" }
         $stVersion.Text = "Version: $($global:VERSION)   (changelog)"
         $status.Refresh()
@@ -1740,7 +1741,7 @@ function main_gui {
         $isOpen = $global:is_open
 
         # Text + button label
-        $stOpen.Text     = "Status: " + $( if ($isOpen) { "Open" } else { "Closed" } )
+        $stOpen.Text     = "Status: " + $( if ($isOpen) { "Open  " } else { "Closed" } )
         $btnToggleOpen.Text = $( if ($isOpen) { "Set Closed (O)" } else { "Set Open (O)" } )
 
         # Bright colors for the status label
