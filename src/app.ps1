@@ -307,7 +307,7 @@ class PrinterManager {
             }
         } catch {}
 
-        # 4) If itÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢s an absolute path that doesnÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢t exist, return as-is (maybe caller will create)
+        # 4) If it's an absolute path that doesn't exist, return as-is (maybe caller will create)
         if ([System.IO.Path]::IsPathRooted($p)) { return $p }
 
         # 5) Fallback: assume relative to current location (even if not present yet)
