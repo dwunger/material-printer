@@ -289,7 +289,7 @@ class PrinterManager {
         if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
         $p = $this.ExpandHome($raw)
 
-        # 1) If itÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢s already a rooted absolute path and exists, use it
+        # 1) If itÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢s already a rooted absolute path and exists, use it
         if ([System.IO.Path]::IsPathRooted($p) -and (Test-Path -LiteralPath $p)) { return (Resolve-Path -LiteralPath $p).Path }
 
         # 2) Try relative to current location
@@ -1571,7 +1571,6 @@ function main {
     return 0
 }
 
-
 function main_gui {
     # ---------- paths (absolute to this script) ----------
     $ScriptDir      = Split-Path -Parent $PSCommandPath            # ...\src
@@ -1635,8 +1634,11 @@ function main_gui {
     $cmbInstrument.DropDownStyle = 'DropDownList'; $cmbInstrument.Width = 280
     [void]$cmbInstrument.Items.AddRange($instrumentList)
 
+
     $lblCategory = New-Object Windows.Forms.Label
     $lblCategory.Text = "Category"; $lblCategory.Font = $fontTitle; $lblCategory.AutoSize = $true
+    $lblCategory.Margin = New-Object System.Windows.Forms.Padding(0, 6, 0, 0)
+
 
     $lstCategory = New-Object Windows.Forms.ListBox; $lstCategory.Dock = 'Fill'
 
@@ -1655,7 +1657,10 @@ function main_gui {
     $lblMaterial = New-Object Windows.Forms.Label
     $lblMaterial.Text = "Reagent"; $lblMaterial.Font = $fontTitle; $lblMaterial.AutoSize = $true
 
-    $lstMaterial = New-Object Windows.Forms.ListBox; $lstMaterial.Dock = 'Fill'
+    $lstMaterial = New-Object Windows.Forms.ListBox
+    $lstMaterial.Dock = 'Fill'
+    # ---------- OWNER-DRAW for all three selectors ----------
+    $lstMaterial.DrawMode = [System.Windows.Forms.DrawMode]::OwnerDrawFixed
 
     [void]$col1.Controls.Add($lblMaterial, 0, 0)
     [void]$col1.Controls.Add($lstMaterial, 0, 1)
@@ -1697,7 +1702,7 @@ function main_gui {
 
     # Layout: two columns
     $buttons = @(
-        $btnPrint, $btnToggleOpen, $btnSelectPrinter, $btnFlush, $btnISE, $btnDowntimeBarcodes,  
+        $btnPrint, $btnToggleOpen, $btnSelectPrinter, $btnFlush, $btnISE, $btnDowntimeBarcodes,
         $btnUpdate, $btnPepe, $btnAdvancedHelp
     )
     for ($i=0; $i -lt $buttons.Count; $i++) { [void]$stack.Controls.Add($buttons[$i], ($i % 2), [Math]::Floor($i/2)) }
@@ -1748,13 +1753,15 @@ function main_gui {
         if ($isOpen) {
             $stOpen.ForeColor = [System.Drawing.Color]::FromArgb(0,230,0)
         } else {
-            $stOpen.ForeColor = [System.Drawing.Color]::Red    # bright red
+            $stOpen.ForeColor = [System.Drawing.Color]::Red
         }
 
         $status.Refresh()
         [System.Windows.Forms.Application]::DoEvents() | Out-Null
-    }
 
+        # Update reagent list overlay immediately
+        $lstMaterial.Invalidate()
+    }
 
     function Populate-Categories([string]$instrumentName) {
         $lstCategory.Items.Clear(); $lstMaterial.Items.Clear()
@@ -1902,9 +1909,6 @@ function main_gui {
     $doAdvancedHelp = { AdvancedHelp }
     $doDuck = { Invoke-DuckAndExplosion; Set-Status }
     $doResourceConfig = {
-        #$browser = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
-        #$link    = 'https://docs.google.com/spreadsheets/d/15leQ_Hy9kxP_PmoBwOqyDEln9Vvy5Bpilqm4LrJ56lE/edit?usp=sharing'
-        #if (Test-Path $browser) { & $browser $link } else { [System.Windows.Forms.MessageBox]::Show("Browser unavailable.","QC Label Printer") | Out-Null }
         Start-Process notepad.exe -ArgumentList "`"$ScriptDir\excel_rsrc.csv`""
     }
     $doMuginn = {
@@ -1965,12 +1969,75 @@ function main_gui {
     })
     $lstMaterial.Add_DoubleClick({ & $doPrint })
 
+    # ---------- OWNER-DRAW: Reagent List with colored suffix ----------
+    $lstMaterial.Add_DrawItem({
+        param($sender, $e)
+        if ($e.Index -lt 0) { return }
+
+        # custom background (light gray when selected)
+        $isSelected = ($e.State -band [System.Windows.Forms.DrawItemState]::Selected) -ne 0
+        $bgBrush = if ($isSelected) { [System.Drawing.Brushes]::LightGray } else { [System.Drawing.Brushes]::White }
+        $e.Graphics.FillRectangle($bgBrush, $e.Bounds)
+
+        $g = $e.Graphics
+        $name = $lstMaterial.Items[$e.Index].ToString()
+
+        $suffixWord  = if ($global:is_open) { "Open" } else { "Closed" }
+        $suffixBrush = if ($global:is_open) { [System.Drawing.Brushes]::ForestGreen } else { [System.Drawing.Brushes]::Red }
+        $suffixText  = "  ($suffixWord)"
+
+        # vertical centering
+        $nameSize = $g.MeasureString($name, $fontBody)
+        $textY = $e.Bounds.Y + (($e.Bounds.Height - $nameSize.Height) / 2)
+
+        $g.DrawString($name, $fontBody, [System.Drawing.Brushes]::Black, $e.Bounds.X, $textY)
+        $g.DrawString($suffixText, $fontBody, $suffixBrush, $e.Bounds.X + $nameSize.Width, $textY)
+
+        $e.DrawFocusRectangle()
+    })
+
+    # ---------- OWNER-DRAW: Category List (light gray selection) ----------
+    $lstCategory.DrawMode = [System.Windows.Forms.DrawMode]::OwnerDrawFixed
+    $lstCategory.Add_DrawItem({
+        param($sender, $e)
+        if ($e.Index -lt 0) { return }
+        $isSelected = ($e.State -band [System.Windows.Forms.DrawItemState]::Selected) -ne 0
+        $bg = if ($isSelected) { [System.Drawing.Brushes]::LightGray } else { [System.Drawing.Brushes]::White }
+        $e.Graphics.FillRectangle($bg, $e.Bounds)
+
+        $text = $lstCategory.Items[$e.Index].ToString()
+        $sz = $e.Graphics.MeasureString($text, $fontBody)
+        $textY = $e.Bounds.Y + (($e.Bounds.Height - $sz.Height) / 2)
+        $e.Graphics.DrawString($text, $fontBody, [System.Drawing.Brushes]::Black, $e.Bounds.X, $textY)
+
+        $e.DrawFocusRectangle()
+    })
+
+    # ---------- OWNER-DRAW: Instrument ComboBox (light gray dropdown selection) ----------
+    $cmbInstrument.DrawMode = [System.Windows.Forms.DrawMode]::OwnerDrawFixed
+    try { $cmbInstrument.ItemHeight = $fontBody.Height + 6 } catch {}
+
+    $cmbInstrument.Add_DrawItem({
+        param($sender,$e)
+        if ($e.Index -lt 0) { return }
+        $isSelected = ($e.State -band [System.Windows.Forms.DrawItemState]::Selected) -ne 0
+        $bg = if ($isSelected) { [System.Drawing.Brushes]::LightGray } else { [System.Drawing.Brushes]::White }
+        $e.Graphics.FillRectangle($bg, $e.Bounds)
+
+        $text = $cmbInstrument.Items[$e.Index].ToString()
+        $sz = $e.Graphics.MeasureString($text, $fontBody)
+        $textY = $e.Bounds.Y + (($e.Bounds.Height - $sz.Height)/2)
+        $e.Graphics.DrawString($text, $fontBody, [System.Drawing.Brushes]::Black, $e.Bounds.X, $textY)
+
+        $e.DrawFocusRectangle()
+    })
+
     # ---------- key mappings (use your Handle-KeyInput) ----------
     $form.KeyPreview = $true
     $form.Add_KeyDown({
         $action = Handle-KeyInput -key $_
         switch ($action) {
-            "back"               { }  # (no-op in GUI navigation)
+            "back"               { }
             "toggle"             { & $doToggle }
             "select-printer"     { & $doSelectPrinter }
             "electrolyte-labels" { & $doISE }
@@ -2008,8 +2075,8 @@ function main_gui {
     return 0
 }
 
-
 main_gui
+
 
 #https://www.zebra.com/content/dam/support-dam/en/documentation/unrestricted/guide/product/tlp2824plus-ug-en.pdf
 #https://www.zebra.com/content/dam/support-dam/en/documentation/unrestricted/guide/software/zplii-pm-vol1.pdf
