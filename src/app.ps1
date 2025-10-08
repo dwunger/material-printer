@@ -5,6 +5,34 @@ using module '.\muginn.psm1'
 
 # Launch asynchronous job to fetch the online CSV
 
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class ConsoleWindow {
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr GetConsoleWindow();
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+}
+"@
+
+$SW_HIDE = 0
+$SW_SHOW = 5
+
+function Toggle-Console {
+    $handle = [ConsoleWindow]::GetConsoleWindow()
+    if ($handle -eq [IntPtr]::Zero) { return }
+    # check if visible (Window is visible if GetWindowLong shows style, but easier: store state)
+    if ($global:ConsoleHidden) {
+        [ConsoleWindow]::ShowWindow($handle, $SW_SHOW) | Out-Null
+        $global:ConsoleHidden = $false
+    } else {
+        [ConsoleWindow]::ShowWindow($handle, $SW_HIDE) | Out-Null
+        $global:ConsoleHidden = $true
+    }
+}
+
+Toggle-Console
 
 ########### OFFLINE PATCH
 #$csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRL6PKYNT-6OfbPxJDU7TiYXKYVYY75YhlEmfAD1HRF0fWXwTbJ2JwbRUG-jgOiOBKl-f_QIOjyG5Ne/pub?output=csv"
