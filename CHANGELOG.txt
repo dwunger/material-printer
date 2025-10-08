@@ -1,4 +1,6 @@
  ## UPDATES
+ v1.1.46 — October 8, 2025 05:19
+  Right align materials open status overlay.
 
  v1.1.45 — October 8, 2025 12:54
   Open status material overlay added. Selection highlights changed to gray.
