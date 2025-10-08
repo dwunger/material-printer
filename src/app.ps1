@@ -2098,6 +2098,17 @@ function main_gui {
         }
     })
 
+
+    $form.Add_Shown({
+        # Run after initial paint:
+        $form.BeginInvoke([Action]{
+            $form.TopMost = $true
+            $form.Activate()
+            $form.TopMost = $false
+        })
+    })
+
+
     # ---------- run ----------
     $form.Add_Shown({
         if ($cmbInstrument.Items.Count -gt 0) {
