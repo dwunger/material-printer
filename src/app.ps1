@@ -1991,7 +1991,16 @@ function main_gui {
         $textY = $e.Bounds.Y + (($e.Bounds.Height - $nameSize.Height) / 2)
 
         $g.DrawString($name, $fontBody, [System.Drawing.Brushes]::Black, $e.Bounds.X, $textY)
-        $g.DrawString($suffixText, $fontBody, $suffixBrush, $e.Bounds.X + $nameSize.Width, $textY)
+        # measure suffix width
+        $suffixSize = $g.MeasureString($suffixText, $fontBody)
+        $boxWidth   = $lstMaterial.ClientSize.Width
+
+        # draw name as before
+        $g.DrawString($name, $fontBody, [System.Drawing.Brushes]::Black, $e.Bounds.X, $textY)
+
+        # draw suffix flushed to the right with 4px padding
+        $g.DrawString($suffixText, $fontBody, $suffixBrush, $boxWidth - $suffixSize.Width - 4, $textY)
+
 
         $e.DrawFocusRectangle()
     })
