@@ -1727,11 +1727,12 @@ function main_gui {
     $btnReload           = New-ActionButton "Reload (F5)"
     $btnFrogBog          = New-ActionButton "FrogBog (G)"
     $btnPepe             = New-ActionButton "Print Image (X)"
+    $btnChess            = New-ActionButton "Chess..."
 
     # Layout: two columns
     $buttons = @(
         $btnPrint, $btnToggleOpen, $btnSelectPrinter, $btnFlush, $btnISE, $btnDowntimeBarcodes,
-        $btnUpdate, $btnPepe, $btnAdvancedHelp
+        $btnUpdate, $btnPepe, $btnAdvancedHelp, $btnChess
     )
     for ($i=0; $i -lt $buttons.Count; $i++) { [void]$stack.Controls.Add($buttons[$i], ($i % 2), [Math]::Floor($i/2)) }
 
@@ -1948,6 +1949,9 @@ function main_gui {
         Invoke-ProjectScript -RelativePath 'src\app.ps1'
         $form.Close()
     }
+    $doChess = {
+        Invoke-ProjectScript -RelativePath 'src\Chess.ps1'
+    }
     $doSnek = { Invoke-ProjectScript -RelativePath 'src\BootStrapper.ps1' -Wait -NoNewWindow }
     $doCmd = {
         Start-Process powershell_ise.exe -ArgumentList "`"$ScriptDir\app.ps1`""
@@ -1980,6 +1984,7 @@ function main_gui {
     #$btnReload.Add_Click($doReload)
     #$btnFrogBog.Add_Click($doFrogBog)
     $btnPepe.Add_Click($doPepe)
+    $btnChess.Add_Click($doChess)
 
     # ---------- selection events ----------
     $cmbInstrument.Add_SelectedIndexChanged({
@@ -2085,6 +2090,7 @@ function main_gui {
             "update"             { & $doUpdate }
             "snek"               { & $doSnek }
             "cmd"                { & $doCmd }
+            "chess"              { & $doChess }
             "reload"             { & $doReload }
             "pepe"               { & $doPepe }
             "help"               { & $doHelp }
