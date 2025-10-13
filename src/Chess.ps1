@@ -325,10 +325,76 @@ $script:DragPiece  = [char]0
 $script:DragPoint  = New-Object Drawing.Point -ArgumentList 0, 0
 $script:LegalTos   = @()
 
-# Glyphs / reusable resources
-# Chess Unicode code points:
-# White: K=0x2654, Q=0x2655, R=0x2656, B=0x2657, N=0x2658, P=0x2659
-# Black: k=0x265A, q=0x265B, r=0x265C, b=0x265D, n=0x265E, p=0x265F
+# ===== Sprite support (Wikipedia) — crisp, pre-sized to $tile =====
+$script:SpritesOk   = $false
+$script:SpriteSheet = $null
+$script:PieceBmp    = @{}  # char -> System.Drawing.Bitmap ($tile x $tile)
+
+function Initialize-Sprites {
+    param([int]$TileSize)
+
+    $desiredWidth = [Math]::Max(6*[int]$TileSize, 270)  # never smaller than 270
+    $url = "https://commons.wikimedia.org/wiki/Special:FilePath/Chess_Pieces_Sprite.svg?width=$desiredWidth"
+
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+        $wc = New-Object Net.WebClient
+        $wc.Headers['User-Agent'] = 'PowerShellChess/1.0'
+        $bytes = $wc.DownloadData($url)
+        $wc.Dispose()
+
+        if(-not $bytes -or $bytes.Length -lt 4096){ throw "Download failed or too small." }
+
+        $ms  = New-Object IO.MemoryStream(,$bytes)
+        $bmp = [Drawing.Bitmap]::FromStream($ms)
+        $script:SpriteSheet = $bmp
+
+        $cw = [int]([double]$bmp.Width / 6.0)
+        $ch = [int]([double]$bmp.Height / 2.0)
+
+        $cols = 'K','Q','B','N','R','P'
+        $rows = 0,1
+
+        foreach($r in $rows){
+            foreach($i in 0..5){
+                $srcRect = New-Object Drawing.Rectangle ($i*$cw), ($r*$ch), $cw, $ch
+
+                $crop = New-Object Drawing.Bitmap $cw, $ch
+                $g1 = [Drawing.Graphics]::FromImage($crop)
+                $g1.CompositingQuality = 'HighQuality'
+                $g1.InterpolationMode  = 'HighQualityBicubic'
+                $g1.PixelOffsetMode    = 'HighQuality'
+                $g1.SmoothingMode      = 'HighQuality'
+                $g1.DrawImage($bmp, (New-Object Drawing.Rectangle 0,0,$cw,$ch), $srcRect, [Drawing.GraphicsUnit]::Pixel)
+                $g1.Dispose()
+
+                $scaled = New-Object Drawing.Bitmap $TileSize, $TileSize
+                $g2 = [Drawing.Graphics]::FromImage($scaled)
+                $g2.CompositingQuality = 'HighQuality'
+                $g2.InterpolationMode  = 'HighQualityBicubic'
+                $g2.PixelOffsetMode    = 'HighQuality'
+                $g2.SmoothingMode      = 'HighQuality'
+                $g2.DrawImage($crop, (New-Object Drawing.Rectangle 0,0,$TileSize,$TileSize), (New-Object Drawing.Rectangle 0,0,$cw,$ch), [Drawing.GraphicsUnit]::Pixel)
+                $g2.Dispose()
+                $crop.Dispose()
+
+                $pieceChar = if($r -eq 0){ $cols[$i] } else { $cols[$i].ToLower() }
+                $script:PieceBmp[[char]$pieceChar] = $scaled
+            }
+        }
+
+        $script:PieceBmp[[char]'.'] = $null
+        $script:SpritesOk = $true
+    }
+    catch {
+        $script:SpritesOk = $false
+        if($script:SpriteSheet){ $script:SpriteSheet.Dispose(); $script:SpriteSheet = $null }
+        # fallback handled in DrawPiece
+    }
+}
+
+
+# Glyphs / reusable resources (fallback mode)
 $glyph = @{
     ([char]'K') = ([string][char]0x2654)
     ([char]'Q') = ([string][char]0x2655)
@@ -363,6 +429,18 @@ function ModelSqFromPoint([Drawing.Point]$pt){
     if($script:HumanIsWhite){ return $vr*8 + $vf } else { return (7-$vr)*8 + (7-$vf) }
 }
 
+function DrawPiece($g, [char]$piece, [int]$cx, [int]$cy){
+    if($piece -eq '.' ){ return }
+    if($script:SpritesOk -and $script:PieceBmp.ContainsKey($piece) -and $script:PieceBmp[$piece]){
+        $bmp = $script:PieceBmp[$piece]
+        $dest = New-Object Drawing.Rectangle ($cx - [int]($bmp.Width/2)), ($cy - [int]($bmp.Height/2)), $bmp.Width, $bmp.Height
+        $g.DrawImageUnscaledAndClipped($bmp, $dest)  # no scaling -> crisp
+    } else {
+        $g.DrawString($glyph[[char]$piece], $font, [Drawing.Brushes]::Black, $cx, $cy, $sf)
+    }
+}
+
+
 function Draw-Board([object]$s,[object]$e){
     $g = $e.Graphics
     $g.SmoothingMode = 'AntiAlias'
@@ -386,12 +464,12 @@ function Draw-Board([object]$s,[object]$e){
             # piece (skip if dragging from here)
             $piece = $board.S[$msq]
             if($piece -ne '.' -and -not ($script:Dragging -and $msq -eq $script:DragFrom)){
-                $g.DrawString($glyph[[char]$piece], $font, [Drawing.Brushes]::Black, ($x+$tile/2), ($y+$tile/2), $sf)
+                DrawPiece -g $g -piece $piece -cx ($x+$tile/2) -cy ($y+$tile/2)
             }
         }
     }
     if($script:Dragging -and $script:DragPiece -ne 0){
-        $g.DrawString($glyph[[char]$script:DragPiece], $font, [Drawing.Brushes]::Black, $script:DragPoint.X, $script:DragPoint.Y, $sf)
+        DrawPiece -g $g -piece $script:DragPiece -cx $script:DragPoint.X -cy $script:DragPoint.Y
     }
 }
 $panel.Add_Paint({ Draw-Board $args[0] $args[1] })
@@ -483,7 +561,21 @@ $panel.Add_MouseUp({
 
 # UI wire-up
 $btnNew.Add_Click({ Start-NewGame })
-$form.Add_Shown({ Start-NewGame })
+$form.Add_Shown({
+    Initialize-Sprites -TileSize $tile
+    Start-NewGame
+})
+
+# Dispose graphics resources on close
+$form.Add_FormClosed({
+    if($script:SpriteSheet){ $script:SpriteSheet.Dispose() }
+    foreach($k in $script:PieceBmp.Keys){
+        $bmp = $script:PieceBmp[$k]
+        if($bmp -ne $null){ $bmp.Dispose() }
+    }
+    $lightBrush.Dispose(); $darkBrush.Dispose(); $selBrush.Dispose(); $dotBrush.Dispose()
+    $font.Dispose()
+})
 
 [void][Windows.Forms.Application]::EnableVisualStyles()
 [void][Windows.Forms.Application]::Run($form)
