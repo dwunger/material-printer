@@ -1,5 +1,8 @@
  ## UPDATES
 
+ v1.1.48 — October 13, 2025 06:03
+  Get chess sprite sheet from Wikipedia. Keep a fallback to unicode piece set.
+
  v1.1.47 — October 8, 2025 06:15
   Hide console host and bring spawned WinForm to front on run. 
 
