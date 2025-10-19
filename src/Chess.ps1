@@ -20,6 +20,10 @@ namespace TinyCsChess
         public char[] S = new char[64]; // model index: rank*8+file, rank 0 = white home rank
         public bool WhiteToMove = true;
         public int Half; public int Full;
+
+        // --- Castling rights ---
+        public bool WK=true, WQ=true, BK=true, BQ=true; // white/black king/queen side
+
         public Board(){ Reset(); }
 
         public void Reset()
@@ -35,6 +39,7 @@ namespace TinyCsChess
                 "rnbqkbnr";
             for(int i=0;i<64;i++) S[i]=start[i];
             WhiteToMove = true; Half=0; Full=1;
+            WK=WQ=BK=BQ=true;
         }
 
         public Board Copy()
@@ -43,6 +48,7 @@ namespace TinyCsChess
             Array.Copy(S, b.S, 64);
             b.WhiteToMove = WhiteToMove;
             b.Half = Half; b.Full = Full;
+            b.WK = WK; b.WQ = WQ; b.BK = BK; b.BQ = BQ;
             return b;
         }
 
@@ -55,17 +61,66 @@ namespace TinyCsChess
         {
             char piece = S[m.From];
             char captured = S[m.To];
+
+            // Detect castling by king two-square move
+            bool isKing = (char.ToLower(piece) == 'k');
+            int fromF = FileOf(m.From), toF = FileOf(m.To);
+            bool castle = isKing && Math.Abs(toF - fromF) == 2;
+
+            // Move piece
             S[m.To] = piece;
             S[m.From] = '.';
 
-            // auto-queen (correct sides)
+            // Auto-queen on promotion request or reaching last rank
             if(m.Promote!='\0') S[m.To]=m.Promote;
             else if(char.ToLower(piece)=='p'){
                 int r = RankOf(m.To);
-                if(r==7 && piece=='P') S[m.To]='Q'; // White reaches rank 7
-                if(r==0 && piece=='p') S[m.To]='q'; // Black reaches rank 0
+                if(r==7 && piece=='P') S[m.To]='Q'; // White reaches top
+                if(r==0 && piece=='p') S[m.To]='q'; // Black reaches bottom
             }
 
+            // --- Handle castling rook move ---
+            if(castle){
+                // White
+                if(piece=='K'){
+                    // King from e1(4) to g1(6) -> rook h1(7) to f1(5); e1 to c1(2) -> rook a1(0) to d1(3)
+                    if(m.To == 6){ S[5] = 'R'; S[7] = '.'; }         // K-side
+                    else if(m.To == 2){ S[3] = 'R'; S[0] = '.'; }    // Q-side
+                }
+                // Black
+                else if(piece=='k'){
+                    // e8(60)->g8(62): h8(63)->f8(61); e8->c8(58): a8(56)->d8(59)
+                    if(m.To == 62){ S[61] = 'r'; S[63] = '.'; }      // K-side
+                    else if(m.To == 58){ S[59] = 'r'; S[56] = '.'; } // Q-side
+                }
+            }
+
+            // --- Update castling rights on king/rook moves or rook capture ---
+            // If king moves, lose both sides
+            if(piece=='K'){ WK=false; WQ=false; }
+            if(piece=='k'){ BK=false; BQ=false; }
+
+            // If rook moves from original squares
+            if(piece=='R'){
+                if(m.From==7) WK=false;      // h1
+                else if(m.From==0) WQ=false; // a1
+            }
+            if(piece=='r'){
+                if(m.From==63) BK=false;     // h8
+                else if(m.From==56) BQ=false;// a8
+            }
+
+            // If a rook is captured on its original square, disable that side
+            if(captured=='R'){
+                if(m.To==7) WK=false;
+                else if(m.To==0) WQ=false;
+            }
+            if(captured=='r'){
+                if(m.To==63) BK=false;
+                else if(m.To==56) BQ=false;
+            }
+
+            // Halfmove clock
             if(char.ToLower(piece)=='p' || captured!='.') Half=0; else Half++;
             if(!WhiteToMove) Full++;
             WhiteToMove = !WhiteToMove;
@@ -78,7 +133,6 @@ namespace TinyCsChess
             for(int i=0;i<ps.Count;i++){
                 Move m = ps[i];
                 Board c = Copy(); c.MakeMove(m);
-                // Check the mover's king after the move
                 if(!c.IsInCheck(!c.WhiteToMove)) legal.Add(m);
             }
             return legal;
@@ -138,15 +192,57 @@ namespace TinyCsChess
                     else dirs=null;
 
                     if(dirs!=null){
+                        int max = (pl=='k')?1:7;
                         for(int d=0; d<dirs.Length; d++){
                             int df=dirs[d][0], dr=dirs[d][1];
-                            int max = (pl=='k')?1:7;
                             for(int step=1; step<=max; step++){
                                 int nf=f+df*step, nr=r+dr*step;
                                 if(nf<0||nf>7||nr<0||nr>7) break;
                                 int to=nr*8+nf; char t=S[to];
                                 if(t=='.'){ mv.Add(new Move(sq,to,'\0')); }
                                 else { if(IsWhite(t)!=IsWhite(p)) mv.Add(new Move(sq,to,'\0')); break; }
+                            }
+                        }
+                    }
+
+                    // --- Castling pseudo (only when king) ---
+                    if(pl=='k'){
+                        // Don't allow if currently in check
+                        if(!IsInCheck(WhiteToMove)){
+                            if(IsWhite(p)){
+                                // White king on e1 (4)
+                                if(sq==4){
+                                    // King-side: f1(5), g1(6) empty; rook at h1(7); rights; squares not attacked
+                                    if(WK && S[5]=='.' && S[6]=='.' && S[7]=='R' &&
+                                       !IsSquareAttackedBy(false,5) && !IsSquareAttackedBy(false,6))
+                                    {
+                                        mv.Add(new Move(4,6,'\0'));
+                                    }
+                                    // Queen-side: d1(3), c1(2) empty; rook at a1(0); rights; squares not attacked; b1(1) can be occupied, that's fine
+                                    if(WQ && S[3]=='.' && S[2]=='.' && S[0]=='R' &&
+                                       S[1]=='.' && // standard rules: b1 must also be empty to move rook across
+                                       !IsSquareAttackedBy(false,3) && !IsSquareAttackedBy(false,2))
+                                    {
+                                        mv.Add(new Move(4,2,'\0'));
+                                    }
+                                }
+                            } else {
+                                // Black king on e8 (60)
+                                if(sq==60){
+                                    // King-side: f8(61), g8(62) empty; rook at h8(63)
+                                    if(BK && S[61]=='.' && S[62]=='.' && S[63]=='r' &&
+                                       !IsSquareAttackedBy(true,61) && !IsSquareAttackedBy(true,62))
+                                    {
+                                        mv.Add(new Move(60,62,'\0'));
+                                    }
+                                    // Queen-side: d8(59), c8(58) empty; rook at a8(56)
+                                    if(BQ && S[59]=='.' && S[58]=='.' && S[56]=='r' &&
+                                       S[57]=='.' &&
+                                       !IsSquareAttackedBy(true,59) && !IsSquareAttackedBy(true,58))
+                                    {
+                                        mv.Add(new Move(60,58,'\0'));
+                                    }
+                                }
                             }
                         }
                     }
@@ -163,6 +259,17 @@ namespace TinyCsChess
             for(int sq=0;sq<64;sq++){
                 char p=S[sq]; if(p=='.' || IsWhite(p)==whiteKing) continue;
                 if(CanAttack(sq, ksq)) return true;
+            }
+            return false;
+        }
+
+        // Is target square attacked by a given side (whiteAttackers==true => white attacks)
+        public bool IsSquareAttackedBy(bool whiteAttackers, int target)
+        {
+            for(int sq=0; sq<64; sq++){
+                char p=S[sq]; if(p=='.') continue;
+                if(IsWhite(p) != whiteAttackers) continue;
+                if(CanAttack(sq, target)) return true;
             }
             return false;
         }
@@ -206,37 +313,286 @@ namespace TinyCsChess
             }
             return score;
         }
+
+        // -------- Zobrist hashing (TT key) --------
+        static ulong[] ZPieces = null; // 64 * 12
+        static ulong ZSide = 0;
+        static ulong ZWK=0, ZWQ=0, ZBK=0, ZBQ=0; // castling rights
+
+        static int PieceIndex(char p){
+            switch(p){
+                case 'P': return 0;  case 'N': return 1;  case 'B': return 2;  case 'R': return 3;  case 'Q': return 4;  case 'K': return 5;
+                case 'p': return 6;  case 'n': return 7;  case 'b': return 8;  case 'r': return 9;  case 'q': return 10; case 'k': return 11;
+                default:  return -1;
+            }
+        }
+
+        static void EnsureZobrist(){
+            if(ZPieces!=null) return;
+            ZPieces = new ulong[64*12];
+            System.Random rng = new System.Random(881726454); // fixed seed
+            for(int i=0;i<64*12;i++){
+                byte[] b = new byte[8];
+                rng.NextBytes(b);
+                ZPieces[i] = System.BitConverter.ToUInt64(b,0);
+            }
+            byte[] sb = new byte[8];
+            rng.NextBytes(sb); ZSide = System.BitConverter.ToUInt64(sb,0);
+            rng.NextBytes(sb); ZWK   = System.BitConverter.ToUInt64(sb,0);
+            rng.NextBytes(sb); ZWQ   = System.BitConverter.ToUInt64(sb,0);
+            rng.NextBytes(sb); ZBK   = System.BitConverter.ToUInt64(sb,0);
+            rng.NextBytes(sb); ZBQ   = System.BitConverter.ToUInt64(sb,0);
+        }
+
+        public ulong ComputeHash(){
+            EnsureZobrist();
+            ulong h = 0UL;
+            for(int sq=0; sq<64; sq++){
+                int pi = PieceIndex(S[sq]);
+                if(pi>=0) h ^= ZPieces[pi*64 + sq];
+            }
+            if(WhiteToMove) h ^= ZSide;
+            if(WK) h ^= ZWK; if(WQ) h ^= ZWQ; if(BK) h ^= ZBK; if(BQ) h ^= ZBQ;
+            return h;
+        }
+
+        // Legal captures only (used by quiescence)
+        public System.Collections.Generic.List<Move> GetLegalCaptures(){
+            var all = GetLegalMoves();
+            var caps = new System.Collections.Generic.List<Move>(16);
+            for(int i=0;i<all.Count;i++){
+                Move m = all[i];
+                if(S[m.To] != '.') caps.Add(m);
+            }
+            return caps;
+        }
     }
 
     public class Engine
     {
-        public int MaxDepth = 2; // keep snappy for drag UI
+        public int MaxDepth = 4;       // can try 5–7
+        public int TimeMs   = 0;       // not used here
+        const int INF = 1000000000;
 
-        public Move GetBestMove(Board b)
-        {
-            List<Move> moves = b.GetLegalMoves();
-            if(moves.Count==0) return new Move(-1,-1,'\0');
-            int best=-999999; Move bm=moves[0];
-            for(int i=0;i<moves.Count;i++){
-                Board c=b.Copy(); c.MakeMove(moves[i]);
-                int sc = -AlphaBeta(c, MaxDepth-1, -999999, 999999);
-                if(sc>best){ best=sc; bm=moves[i]; }
+        // --- Transposition table ---
+        class TTEntry {
+            public ulong Key;
+            public int Depth;
+            public int Score;
+            public byte Flag; // 0 = EXACT, 1 = LOWER, 2 = UPPER
+            public Move Best;
+        }
+        System.Collections.Generic.Dictionary<ulong, TTEntry> TT =
+            new System.Collections.Generic.Dictionary<ulong, TTEntry>(1<<20); // ~1M logical capacity
+
+        // --- Move ordering helpers ---
+        int[,] History = new int[64,64];   // from,to
+        Move[,] Killers = new Move[256,2]; // per-ply two killers
+
+        static int PieceVal(char p){
+            switch(char.ToLower(p)){
+                case 'p': return 100; case 'n': return 320; case 'b': return 330;
+                case 'r': return 500; case 'q': return 900; case 'k': return 20000;
             }
-            return bm;
+            return 0;
         }
 
-        private int AlphaBeta(Board b, int depth, int alpha, int beta)
-        {
-            if(depth<=0) return b.Evaluate() * (b.WhiteToMove?1:-1);
-            List<Move> moves = b.GetLegalMoves();
-            if(moves.Count==0) return b.IsInCheck(b.WhiteToMove)? -20000 : 0;
-            for(int i=0;i<moves.Count;i++){
-                Board c=b.Copy(); c.MakeMove(moves[i]);
-                int sc = -AlphaBeta(c, depth-1, -beta, -alpha);
-                if(sc>=beta) return beta;
-                if(sc>alpha) alpha=sc;
+        int ScoreMove(TinyCsChess.Board b, Move m, Move hashMove, int ply){
+            if(hashMove!=null && m.From==hashMove.From && m.To==hashMove.To && m.Promote==hashMove.Promote) return 900000000;
+
+            char victim = b.S[m.To];
+            if(victim!='.'){
+                int att = PieceVal(b.S[m.From]);
+                int vic = PieceVal(victim);
+                return 800000000 + (vic*1000 - att);
+            }
+
+            if(Killers[ply,0]!=null && m.From==Killers[ply,0].From && m.To==Killers[ply,0].To) return 700000000;
+            if(Killers[ply,1]!=null && m.From==Killers[ply,1].From && m.To==Killers[ply,1].To) return 699000000;
+
+            return History[m.From,m.To];
+        }
+
+        void NoteKiller(int ply, Move m){
+            if(Killers[ply,0]==null || !(Killers[ply,0].From==m.From && Killers[ply,0].To==m.To)){
+                Killers[ply,1] = Killers[ply,0];
+                Killers[ply,0] = m;
+            }
+        }
+
+        void NoteHistory(Move m, int depth){
+            int add = depth*depth;
+            int v = History[m.From,m.To] + add;
+            if(v < 900000000) History[m.From,m.To] = v;
+        }
+
+        // --- Quiescence search (captures only) ---
+        int Quiesce(TinyCsChess.Board b, int alpha, int beta){
+            int stand = b.Evaluate() * (b.WhiteToMove?1:-1);
+            if(stand >= beta) return beta;
+            if(alpha < stand) alpha = stand;
+
+            var caps = b.GetLegalCaptures();
+            caps.Sort(delegate(Move a, Move c){
+                int sa = 0, sc = 0;
+                char va = b.S[a.To], vc = b.S[c.To];
+                if(va!='.') sa = PieceVal(va)*1000 - PieceVal(b.S[a.From]);
+                if(vc!='.') sc = PieceVal(vc)*1000 - PieceVal(b.S[c.From]);
+                return sc.CompareTo(sa);
+            });
+
+            for(int i=0;i<caps.Count;i++){
+                Move m = caps[i];
+                TinyCsChess.Board nb = b.Copy();
+                nb.MakeMove(m);
+                int score = -Quiesce(nb, -beta, -alpha);
+                if(score >= beta) return beta;
+                if(score > alpha) alpha = score;
             }
             return alpha;
+        }
+
+        // --- AlphaBeta with TT, LMR, futility, move ordering ---
+        int AlphaBeta(TinyCsChess.Board b, int depth, int alpha, int beta, int ply, Move prevBest)
+        {
+            int origAlpha = alpha;
+            int origBeta  = beta;
+
+            bool inCheck = b.IsInCheck(b.WhiteToMove);
+            if(depth <= 0){
+                return Quiesce(b, alpha, beta);
+            }
+
+            // TT probe
+            ulong key = b.ComputeHash();
+            TTEntry te;
+            if(TT.TryGetValue(key, out te)){
+                if(te.Depth >= depth){
+                    if(te.Flag==0) return te.Score;
+                    if(te.Flag==1 && te.Score > alpha) alpha = te.Score; // LOWER
+                    if(te.Flag==2 && te.Score < beta)  beta  = te.Score; // UPPER
+                    if(alpha >= beta) return te.Score;
+                }
+                if(prevBest==null) prevBest = te.Best;
+            }
+
+            var moves = b.GetLegalMoves();
+            if(moves.Count==0){
+                if(inCheck) return -20000 + ply; // mate (prefer quicker)
+                return 0; // stalemate
+            }
+
+            moves.Sort(delegate(Move x, Move y){
+                int sx = ScoreMove(b, x, prevBest, ply);
+                int sy = ScoreMove(b, y, prevBest, ply);
+                return sy.CompareTo(sx);
+            });
+
+            int bestScore = -INF;
+            Move bestMove = moves[0];
+
+            bool allowFutility = (!inCheck && depth <= 2);
+            int movesSearched = 0;
+
+            for(int i=0;i<moves.Count;i++){
+                Move m = moves[i];
+                bool isCapture = (b.S[m.To] != '.');
+
+                // Late-move reduction for quiet moves
+                int reduction = 0;
+                if(depth >= 3 && !isCapture && movesSearched >= 4){
+                    reduction = 1;
+                }
+
+                // Futility near leaves for quiets
+                if(allowFutility && !isCapture && depth==1){
+                    int stand = b.Evaluate() * (b.WhiteToMove?1:-1);
+                    if(stand + 150 < alpha){
+                        movesSearched++;
+                        continue;
+                    }
+                }
+
+                TinyCsChess.Board nb = b.Copy();
+                nb.MakeMove(m);
+
+                int score;
+                if(reduction>0){
+                    score = -AlphaBeta(nb, depth-1-reduction, -alpha-1, -alpha, ply+1, null);
+                    if(score > alpha){
+                        score = -AlphaBeta(nb, depth-1, -beta, -alpha, ply+1, null);
+                    }
+                } else {
+                    score = -AlphaBeta(nb, depth-1, -beta, -alpha, ply+1, null);
+                }
+
+                movesSearched++;
+
+                if(score > bestScore){
+                    bestScore = score;
+                    bestMove = m;
+                    if(score > alpha){
+                        alpha = score;
+                        if(alpha >= beta){
+                            if(!isCapture){
+                                NoteKiller(ply, m);
+                                NoteHistory(m, depth);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Store in TT with correct node type
+            byte flag = 0; // EXACT
+            if(bestScore <= origAlpha) flag = 2; // UPPER
+            else if(bestScore >= origBeta) flag = 1; // LOWER
+
+            TTEntry store = new TTEntry();
+            store.Key = key; store.Depth = depth; store.Score = bestScore; store.Flag = flag; store.Best = bestMove;
+            TT[key] = store;
+
+            return bestScore;
+        }
+
+        // --- Iterative deepening with aspiration windows ---
+        public Move GetBestMove(Board b)
+        {
+            Move best = null;
+            int guess = b.Evaluate() * (b.WhiteToMove?1:-1);
+            int alpha = -INF, beta = INF;
+
+            for(int d=1; d<=MaxDepth; d++){
+                if(d>=3){
+                    int asp = 50 + 50*d; // widen with depth
+                    alpha = guess - asp;
+                    beta  = guess + asp;
+                } else {
+                    alpha = -INF; beta = INF;
+                }
+
+                int score = AlphaBeta(b, d, alpha, beta, 0, best);
+
+                if(score <= alpha){
+                    score = AlphaBeta(b, d, -INF, beta, 0, best);
+                } else if(score >= beta){
+                    score = AlphaBeta(b, d, alpha, INF, 0, best);
+                }
+
+                TTEntry te;
+                if(TT.TryGetValue(b.ComputeHash(), out te)){
+                    if(te.Best!=null) best = te.Best;
+                    guess = score;
+                }
+            }
+
+            if(best==null){
+                var ms = b.GetLegalMoves();
+                if(ms.Count==0) return new Move(-1,-1,'\0');
+                best = ms[0];
+            }
+            return best;
         }
     }
 }
@@ -272,7 +628,7 @@ Add-Type -AssemblyName System.Drawing
 
 $board  = New-Object TinyCsChess.Board
 $engine = New-Object TinyCsChess.Engine
-$engine.MaxDepth = 2
+$engine.MaxDepth = 7   # increased by +2 plies from previous 5 -> 7
 
 $tile = 72
 $form = New-Object Windows.Forms.Form
@@ -439,7 +795,6 @@ function DrawPiece($g, [char]$piece, [int]$cx, [int]$cy){
         $g.DrawString($glyph[[char]$piece], $font, [Drawing.Brushes]::Black, $cx, $cy, $sf)
     }
 }
-
 
 function Draw-Board([object]$s,[object]$e){
     $g = $e.Graphics
