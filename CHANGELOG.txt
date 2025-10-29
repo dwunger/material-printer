@@ -1,5 +1,8 @@
  ## UPDATES
 
+ v1.1.50 — October 28, 2025 11:46
+  Added focus ring handling for keyboard navigation in the form.
+
  v1.1.49 — October 13, 2025 06:03
   Get chess sprite sheet from Wikipedia. Keep a fallback to unicode piece set.
 
