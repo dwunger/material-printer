@@ -317,7 +317,7 @@ class PrinterManager {
         if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
         $p = $this.ExpandHome($raw)
 
-        # 1) If itÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢s already a rooted absolute path and exists, use it
+        # 1) If itÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢s already a rooted absolute path and exists, use it
         if ([System.IO.Path]::IsPathRooted($p) -and (Test-Path -LiteralPath $p)) { return (Resolve-Path -LiteralPath $p).Path }
 
         # 2) Try relative to current location
@@ -2100,6 +2100,82 @@ function main_gui {
             "advancedhelp"       { & $doAdvancedHelp }
             default {
                 if ($_.KeyCode -eq 'Enter' -and $lstMaterial.Focused) { & $doPrint }
+            }
+        }
+    })
+
+    # ---------- FOCUS RING HANDLING ----------
+    $form.Add_KeyDown({
+        param($sender, $e)
+
+        # Determine which control currently has focus
+        $focused = [System.Windows.Forms.Control]::FromHandle([System.Windows.Forms.Control]::FromHandle($form.ActiveControl.Handle).Handle)
+
+        # Helper to move focus safely
+        function Focus-Control($ctrl) {
+            if ($ctrl -ne $null -and $ctrl.CanFocus) {
+                $ctrl.Focus()
+                [System.Windows.Forms.Application]::DoEvents() | Out-Null
+            }
+        }
+
+        switch ($e.KeyCode) {
+            'Up' {
+                if ($cmbInstrument.Focused -and -not $cmbInstrument.DroppedDown) {
+                    $cmbInstrument.DroppedDown = $true
+                    $e.Handled = $true
+                    return
+                }
+            }
+            'Down' {
+                if ($cmbInstrument.Focused -and -not $cmbInstrument.DroppedDown) {
+                    $cmbInstrument.DroppedDown = $true
+                    $e.Handled = $true
+                    return
+                }
+            }
+            'Right' {
+                if ($cmbInstrument.Focused) {
+                    # Select current instrument (if valid)
+                    if ($cmbInstrument.SelectedIndex -ge 0) {
+                        Populate-Categories $cmbInstrument.SelectedItem.ToString()
+                    }
+                    Focus-Control $lstCategory
+                    $e.Handled = $true
+                    return
+                }
+                elseif ($lstCategory.Focused) {
+                    if ($lstCategory.SelectedIndex -ge 0 -and $cmbInstrument.SelectedIndex -ge 0) {
+                        Populate-Materials $cmbInstrument.SelectedItem.ToString() $lstCategory.SelectedIndex
+                    }
+                    Focus-Control $lstMaterial
+                    $e.Handled = $true
+                    return
+                }
+                elseif ($lstMaterial.Focused) {
+                    # Same as Enter -> print
+                    & $doPrint
+                    $e.Handled = $true
+                    return
+                }
+            }
+
+            'Left' {
+                if ($lstMaterial.Focused) {
+                    Focus-Control $lstCategory
+                    $e.Handled = $true
+                    return
+                }
+                elseif ($lstCategory.Focused) {
+                    Focus-Control $cmbInstrument
+                    $e.Handled = $true
+                    return
+                }
+            }
+
+            # Keep default Up/Down behavior inside the lists
+            'Enter' {
+                if ($lstMaterial.Focused) { & $doPrint; $e.Handled = $true }
             }
         }
     })
