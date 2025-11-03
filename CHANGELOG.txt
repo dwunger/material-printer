@@ -1,5 +1,8 @@
  ## UPDATES
 
+ v1.1.51 — November 3, 2025 01:33
+  Increased max ISE calibrators copies from 10 to 50.
+
  v1.1.50 — October 28, 2025 11:46
   Added focus ring handling for keyboard navigation in the form.
 
