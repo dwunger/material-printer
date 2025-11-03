@@ -201,7 +201,7 @@ $lblCopies.Visible = $false
 
 $nudCopies = New-Object Windows.Forms.NumericUpDown
 $nudCopies.Minimum = 1
-$nudCopies.Maximum = 10
+$nudCopies.Maximum = 50
 $nudCopies.Value = 1
 $nudCopies.Font = $fontB
 $nudCopies.Width = 80
