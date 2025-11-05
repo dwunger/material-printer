@@ -370,7 +370,7 @@ namespace TinyCsChess
 
     public class Engine
     {
-        public int MaxDepth = 4;       // can try 5–7
+        public int MaxDepth = 4;       // can try 5â€“7
         public int TimeMs   = 0;       // not used here
         const int INF = 1000000000;
 
@@ -658,6 +658,19 @@ $btnNew.Text = "New Game"
 $btnNew.Location = New-Object Drawing.Point -ArgumentList 170, 3
 $btnNew.Width = 90
 
+$btnFlip = New-Object Windows.Forms.Button
+$btnFlip.Text = "Flip Board"
+$btnFlip.Location = New-Object Drawing.Point -ArgumentList 270, 3
+$btnFlip.Width = 90
+
+$form.Controls.AddRange(@($lblSide,$sideCombo,$btnNew,$btnFlip,$lblStatus,$panel))
+$script:FlippedView = $false
+$btnFlip.Add_Click({
+    $script:FlippedView = -not $script:FlippedView
+    Refresh-Panel
+})
+
+
 $lblStatus = New-Object Windows.Forms.Label
 $lblStatus.AutoSize = $true
 $lblStatus.Location = New-Object Drawing.Point -ArgumentList 270, 8
@@ -681,7 +694,7 @@ $script:DragPiece  = [char]0
 $script:DragPoint  = New-Object Drawing.Point -ArgumentList 0, 0
 $script:LegalTos   = @()
 
-# ===== Sprite support (Wikipedia) — crisp, pre-sized to $tile =====
+# ===== Sprite support (Wikipedia) â€” crisp, pre-sized to $tile =====
 $script:SpritesOk   = $false
 $script:SpriteSheet = $null
 $script:PieceBmp    = @{}  # char -> System.Drawing.Bitmap ($tile x $tile)
@@ -782,7 +795,12 @@ function ModelSqFromPoint([Drawing.Point]$pt){
     $vf = [Math]::Floor($pt.X / $tile)
     $vr = 7 - [Math]::Floor($pt.Y / $tile)
     if($vf -lt 0 -or $vf -gt 7 -or $vr -lt 0 -or $vr -gt 7){ return -1 }
-    if($script:HumanIsWhite){ return $vr*8 + $vf } else { return (7-$vr)*8 + (7-$vf) }
+    if($script:FlippedView -xor (-not $script:HumanIsWhite)){
+        return (7-$vr)*8 + (7-$vf)
+    } else {
+        return $vr*8 + $vf
+    }
+
 }
 
 function DrawPiece($g, [char]$piece, [int]$cx, [int]$cy){
@@ -802,14 +820,19 @@ function Draw-Board([object]$s,[object]$e){
     for($vr=0; $vr -lt 8; $vr++){
         for($vf=0; $vf -lt 8; $vf++){
             $x=$vf*$tile; $y=(7-$vr)*$tile
-            if((($vr+$vf)%2) -eq 0){
+            if((($vr+$vf)%2) -eq 1){
                 $g.FillRectangle($lightBrush, $x, $y, $tile, $tile)
             } else {
                 $g.FillRectangle($darkBrush, $x, $y, $tile, $tile)
             }
 
             # model square for this view
-            $msq = if($script:HumanIsWhite){ $vr*8+$vf } else { (7-$vr)*8 + (7-$vf) }
+            $msq = if($script:FlippedView -xor (-not $script:HumanIsWhite)){
+                (7-$vr)*8 + (7-$vf)
+            } else {
+                $vr*8 + $vf
+            }
+
 
             # mark legal targets
             if($script:LegalTos -and ($script:LegalTos -contains $msq)){
