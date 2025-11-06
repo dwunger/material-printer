@@ -317,7 +317,7 @@ class PrinterManager {
         if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
         $p = $this.ExpandHome($raw)
 
-        # 1) If itÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢s already a rooted absolute path and exists, use it
+        # 1) If itÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢s already a rooted absolute path and exists, use it
         if ([System.IO.Path]::IsPathRooted($p) -and (Test-Path -LiteralPath $p)) { return (Resolve-Path -LiteralPath $p).Path }
 
         # 2) Try relative to current location
@@ -1610,6 +1610,7 @@ function main_gui {
     $global:menu_level = $INSTRUMENT_SELECT
     $global:QueuePending = $false
     $global:startup = $true
+    $global:materialStatus = @{} # Track per-material print status ("queued" | "printed")
 
     # ---------- data boot ----------
     $materialGroupsByInstrument = Setup-MaterialGroupsOFFLINEPATCH
@@ -1920,9 +1921,15 @@ function main_gui {
             return
         }
         print_label -material $mat
-        $global:last_selected_index[$MATERIAL_SELECT] = $lstMaterial.SelectedIndex
+
+        # --- Mark as queued and refresh overlay ---
+        $global:materialStatus[$mat.name] = "queued"
+        $global:QueuePending = $true
+        $lstMaterial.Invalidate()
         Set-Status
+
     }
+
     $doToggle = {
         $inst = if ($cmbInstrument.SelectedIndex -ge 0) { $cmbInstrument.SelectedItem.ToString() } else { "" }
         $atRoot = ($lstCategory.SelectedIndex -lt 0 -and $lstMaterial.SelectedIndex -lt 0)
@@ -1930,7 +1937,21 @@ function main_gui {
         else { $global:is_open = -not $global:is_open }
         Sync-OpenUI
     }
-    $doFlush = { if ($global:QueuePending) { flush-queue $null }; Set-Status }
+    $doFlush = {
+        flush-queue $null
+
+        # --- Mark queued items as printed and refresh overlay ---
+        foreach ($key in @($global:materialStatus.Keys)) {
+            if ($global:materialStatus[$key] -eq 'queued') {
+                $global:materialStatus[$key] = 'printed'
+            }
+        }
+        $global:QueuePending = $false
+        $lstMaterial.Invalidate()
+        Set-Status
+    }
+
+
     $doDowntime = { Invoke-ProjectScript -RelativePath 'src\BarcodeGenerator.ps1' -NoNewWindow }
     $doISE = { electrolyte-labels; Set-Status }
     $doSelectPrinter = { GUI-SelectPrinter }
@@ -2033,6 +2054,28 @@ function main_gui {
 
         # draw suffix flushed to the right with 4px padding
         $g.DrawString($suffixText, $fontBody, $suffixBrush, $boxWidth - $suffixSize.Width - 4, $textY)
+        # --- NEW: draw print status overlay ---
+        $status = $global:materialStatus[$name]
+        if ($status) {
+            $checkChar = [char]8730   # checkmark
+            $hourChar  = [char]9203   # hourglass
+            switch ($status) {
+                "queued" {
+                    $badgeText  = " " + $hourChar + " Queued "
+                    $badgeBrush = [System.Drawing.Brushes]::Goldenrod
+                }
+                "printed" {
+                    $badgeText  = " " + $checkChar + " Printed "
+                    $badgeBrush = [System.Drawing.Brushes]::ForestGreen
+                }
+                default { $badgeText = ""; $badgeBrush = $null }
+            }
+            if ($badgeBrush) {
+                $badgeSize = $g.MeasureString($badgeText, $fontBody)
+                $x = $boxWidth - $suffixSize.Width - $badgeSize.Width - 10
+                $g.DrawString($badgeText, $fontBody, $badgeBrush, $x, $textY)
+            }
+        }
 
 
         $e.DrawFocusRectangle()
@@ -2200,10 +2243,35 @@ function main_gui {
         Sync-OpenUI
     })
 
+    # ---------- PRINT STATUS AUTO-CLEAR ----------
+    $timer = New-Object System.Windows.Forms.Timer
+    $timer.Interval = 2500  # milliseconds (4 seconds)
+
+    $timer.Add_Tick({
+        # take a snapshot of keys so we can safely remove them
+        $keysToRemove = @()
+        foreach ($key in $global:materialStatus.Keys) {
+            if ($global:materialStatus[$key] -eq 'queued') {
+                $keysToRemove += $key
+            }
+        }
+
+        if ($keysToRemove.Count -gt 0) {
+            foreach ($k in $keysToRemove) {
+                [void]$global:materialStatus.Remove($k)
+            }
+            $lstMaterial.Invalidate()
+        }
+    })
+
+    $timer.Start()
+
+
     [System.Windows.Forms.Application]::EnableVisualStyles()
     [System.Windows.Forms.Application]::Run($form)
     return 0
 }
+
 
 main_gui
 
