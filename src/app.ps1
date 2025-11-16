@@ -51,13 +51,28 @@ if (Test-Path '~\Desktop\QC Label Printer `[TEST`].lnk') {
    Move '~\Desktop\QC Label Printer `[TEST`].lnk' '~\Desktop\Label Printer.lnk'
     # Define the path to the shortcut and icon
     $shortcutPath = [System.IO.Path]::Combine([System.Environment]::GetFolderPath('Desktop'), 'Label Printer.lnk')
-    $iconPath = [System.IO.Path]::Combine('C:\Users\dunger01\Documents\Quick Setup\QC Materials Printer', 'qclabelprinter1.ico')
+    # $iconPath = [System.IO.Path]::Combine('C:\Users\dunger01\Documents\Quick Setup\QC Materials Printer', 'qclabelprinter1.ico') # this obviously won't work in prod
+    $iconPath = [System.IO.Path]::Combine("~\Documents\Quick Setup\QC Materials Printer", 'qclabelprinter1.ico')
     $shell = New-Object -ComObject WScript.Shell
     $shortcut = $shell.CreateShortcut($shortcutPath)
     $shortcut.IconLocation = $iconPath
     $shortcut.Save()
     Write-Output "Shortcut icon has been changed."
 }
+
+if (Test-Path '~\Desktop\Label Printer.lnk') {
+   Move '~\Desktop\QC Label Printer `[TEST`].lnk' '~\Desktop\Label Printer.lnk'
+    # Define the path to the shortcut and icon
+    $shortcutPath = [System.IO.Path]::Combine([System.Environment]::GetFolderPath('Desktop'), 'Label Printer.lnk')
+    # $iconPath = [System.IO.Path]::Combine('C:\Users\dunger01\Documents\Quick Setup\QC Materials Printer', 'qclabelprinter1.ico') # this obviously won't work in prod
+    $iconPath = [System.IO.Path]::Combine("~\Documents\Quick Setup\QC Materials Printer", 'qclabelprinter1.ico')
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut($shortcutPath)
+    $shortcut.IconLocation = $iconPath
+    $shortcut.Save()
+    Write-Output "Shortcut icon has been changed."
+}
+
 
 #EXECUTION FLAGS
 # powershell -ExecutionPolicy Bypass -File .\qc_labels.ps1
