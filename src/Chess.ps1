@@ -15,6 +15,12 @@ namespace TinyCsChess
         public Move(int from, int to, char promote) { From = from; To = to; Promote = promote; }
     }
 
+    public static class Globals
+    {
+        public static bool VariantGiveaway = false;
+    }
+
+
     public class Board
     {
         public char[] S = new char[64]; // model index: rank*8+file, rank 0 = white home rank
@@ -130,13 +136,39 @@ namespace TinyCsChess
         {
             List<Move> ps = GetPseudo();
             List<Move> legal = new List<Move>();
-            for(int i=0;i<ps.Count;i++){
+            bool giveaway = TinyCsChess.Globals.VariantGiveaway;
+
+            for (int i = 0; i < ps.Count; i++)
+            {
                 Move m = ps[i];
-                Board c = Copy(); c.MakeMove(m);
-                if(!c.IsInCheck(!c.WhiteToMove)) legal.Add(m);
+                Board c = Copy();
+                c.MakeMove(m);
+
+                if (giveaway)
+                    legal.Add(m); // no check filtering
+                else if (!c.IsInCheck(!c.WhiteToMove))
+                    legal.Add(m);
             }
+
+            if (giveaway)
+            {
+                // Captures compulsory
+                List<Move> captures = new List<Move>();
+                for (int i = 0; i < legal.Count; i++)
+                {
+                    char victim = S[legal[i].To];
+                    if (victim != '.')
+                        captures.Add(legal[i]);
+                }
+                if (captures.Count > 0)
+                    return captures;
+            }
+
             return legal;
         }
+
+
+
 
         private List<Move> GetPseudo()
         {
@@ -155,7 +187,15 @@ namespace TinyCsChess
 
                     int fwd = sq + dir*8;
                     if(fwd>=0 && fwd<64 && S[fwd]=='.'){
-                        if(RankOf(fwd)==promoteRank) mv.Add(new Move(sq,fwd, w?'Q':'q')); else mv.Add(new Move(sq,fwd,'\0'));
+                        
+                        if (RankOf(fwd) == promoteRank) {
+                            char[] opts = (w ? new char[]{'Q','R','B','N','K'} : new char[]{'q','r','b','n','k'});
+                            for (int pi = 0; pi < opts.Length; pi++)
+                                mv.Add(new Move(sq, fwd, opts[pi]));
+                        } else {
+                            mv.Add(new Move(sq, fwd, '\0'));
+                        }
+
                         int dbl = sq + dir*16;
                         if(r==startRank && S[dbl]=='.') mv.Add(new Move(sq,dbl,'\0'));
                     }
@@ -165,7 +205,15 @@ namespace TinyCsChess
                         if(to>=0 && to<64){
                             int tf=FileOf(to);
                             if(Math.Abs(tf-f)==1 && S[to]!='.' && IsWhite(S[to])!=w){
-                                if(RankOf(to)==promoteRank) mv.Add(new Move(sq,to, w?'Q':'q')); else mv.Add(new Move(sq,to,'\0'));
+                                
+                                if (RankOf(to) == promoteRank) {
+                                    char[] opts = (w ? new char[]{'Q','R','B','N','K'} : new char[]{'q','r','b','n','k'});
+                                    for (int pi = 0; pi < opts.Length; pi++)
+                                        mv.Add(new Move(sq, to, opts[pi]));
+                                } else {
+                                    mv.Add(new Move(sq, to, '\0'));
+                                }
+
                             }
                         }
                     }
@@ -370,7 +418,7 @@ namespace TinyCsChess
 
     public class Engine
     {
-        public int MaxDepth = 4;       // can try 5â€“7
+        public int MaxDepth = 4;       // can try 5Ã¢â‚¬â€œ7
         public int TimeMs   = 0;       // not used here
         const int INF = 1000000000;
 
@@ -426,9 +474,19 @@ namespace TinyCsChess
             if(v < 900000000) History[m.From,m.To] = v;
         }
 
+        int EvalSideToMove(TinyCsChess.Board b)
+        {
+            int s = b.Evaluate() * (b.WhiteToMove ? 1 : -1);
+            if (TinyCsChess.Globals.VariantGiveaway)
+                s = -s; // fewer pieces is better
+            return s;
+        }
+
+
         // --- Quiescence search (captures only) ---
         int Quiesce(TinyCsChess.Board b, int alpha, int beta){
-            int stand = b.Evaluate() * (b.WhiteToMove?1:-1);
+            int stand = EvalSideToMove(b);
+
             if(stand >= beta) return beta;
             if(alpha < stand) alpha = stand;
 
@@ -477,10 +535,15 @@ namespace TinyCsChess
             }
 
             var moves = b.GetLegalMoves();
-            if(moves.Count==0){
-                if(inCheck) return -20000 + ply; // mate (prefer quicker)
-                return 0; // stalemate
+            if (moves.Count == 0)
+            {
+                if (TinyCsChess.Globals.VariantGiveaway)
+                    return +20000 - ply; // stalemate = win
+                if (inCheck)
+                    return -20000 + ply; // checkmate = loss
+                return 0; // stalemate draw
             }
+
 
             moves.Sort(delegate(Move x, Move y){
                 int sx = ScoreMove(b, x, prevBest, ply);
@@ -653,6 +716,32 @@ $sideCombo.SelectedIndex = 0
 $sideCombo.Location = New-Object Drawing.Point -ArgumentList 68, 4
 $sideCombo.Width = 90
 
+$lblVariant = New-Object Windows.Forms.Label
+$lblVariant.Text = "Variant:"
+$lblVariant.AutoSize = $true
+$lblVariant.Location = New-Object Drawing.Point -ArgumentList 370, 8
+
+$variantCombo = New-Object Windows.Forms.ComboBox
+$variantCombo.DropDownStyle = [Windows.Forms.ComboBoxStyle]::DropDownList
+[void]$variantCombo.Items.Add("Standard")
+[void]$variantCombo.Items.Add("Giveaway")
+$variantCombo.SelectedIndex = 0
+$variantCombo.Location = New-Object Drawing.Point -ArgumentList 440, 4
+$variantCombo.Width = 90
+
+$form.Controls.AddRange(@($lblVariant, $variantCombo))
+
+$script:Variant = "Standard"
+$variantCombo.Add_SelectedIndexChanged({
+    $script:Variant = $variantCombo.SelectedItem
+})
+
+function Sync-Variant {
+    [TinyCsChess.Globals]::VariantGiveaway = ($variantCombo.SelectedItem -eq 'Giveaway')
+}
+$variantCombo.Add_SelectedIndexChanged({ Sync-Variant })
+
+
 $btnNew = New-Object Windows.Forms.Button
 $btnNew.Text = "New Game"
 $btnNew.Location = New-Object Drawing.Point -ArgumentList 170, 3
@@ -694,7 +783,7 @@ $script:DragPiece  = [char]0
 $script:DragPoint  = New-Object Drawing.Point -ArgumentList 0, 0
 $script:LegalTos   = @()
 
-# ===== Sprite support (Wikipedia) â€” crisp, pre-sized to $tile =====
+# ===== Sprite support (Wikipedia) Ã¢â‚¬â€ crisp, pre-sized to $tile =====
 $script:SpritesOk   = $false
 $script:SpriteSheet = $null
 $script:PieceBmp    = @{}  # char -> System.Drawing.Bitmap ($tile x $tile)
@@ -855,17 +944,27 @@ $panel.Add_Paint({ Draw-Board $args[0] $args[1] })
 function Refresh-Panel { $panel.Invalidate() }
 
 function Start-NewGame {
+    Sync-Variant
     $board.Reset()
     $script:HumanIsWhite = ($sideCombo.SelectedIndex -eq 0)
     $script:Dragging=$false; $script:DragFrom=-1; $script:DragPiece=[char]0; $script:LegalTos=@()
     Refresh-Panel; Update-Status
     if(-not $script:HumanIsWhite){
+
+        [TinyCsChess.Globals]::VariantGiveaway = ($script:Variant -eq "Giveaway")
+
         # Computer (White) makes the first move synchronously
         $best = $engine.GetBestMove($board)
         if($best.From -ne -1){ $board.MakeMove($best) }
         Refresh-Panel; Update-Status
     }
 }
+
+$form.Add_Shown({
+    Initialize-Sprites -TileSize $tile
+    Sync-Variant
+    Start-NewGame
+})
 
 # Mouse handlers (drag)
 $panel.Add_MouseDown({
@@ -912,13 +1011,19 @@ $panel.Add_MouseUp({
         # end detection
         $legal = $board.GetLegalMoves()
         if($legal.Count -eq 0){
-            if($board.IsInCheck($board.WhiteToMove)){
-                [Windows.Forms.MessageBox]::Show("Checkmate! " + ($(if($board.WhiteToMove){"Computer"}else{"You"})) + " win(s).") | Out-Null
+            if($script:Variant -eq "Giveaway"){
+                [Windows.Forms.MessageBox]::Show("Giveaway win! Side to move has no legal moves (stalemate) or lost all pieces.") | Out-Null
+
             } else {
-                [Windows.Forms.MessageBox]::Show("Stalemate.") | Out-Null
+                if($board.IsInCheck($board.WhiteToMove)){
+                    [Windows.Forms.MessageBox]::Show("Checkmate! " + ($(if($board.WhiteToMove){"Computer"}else{"You"})) + " win(s).") | Out-Null
+                } else {
+                    [Windows.Forms.MessageBox]::Show("Stalemate.") | Out-Null
+                }
             }
             Start-NewGame; return
         }
+
         # computer reply (synchronous for reliability)
         $best = $engine.GetBestMove($board)
         if($best.From -ne -1){ $board.MakeMove($best) }
