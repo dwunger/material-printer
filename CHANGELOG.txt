@@ -1,7 +1,10 @@
  ## UPDATES
 
+ v1.1.54 — November 25, 2025 04:28
+  Added giveaway chess variant and updated wash solution lot information.
+
  v1.1.53 — November 15, 2025 11:35
-  Fix desktop icons in prod
+  Fix desktop icons in prod.
 
  v1.1.52 — November 6, 2025 10:10
   Added print feedback by overlaying enqueued materials. Removed sleep causing hang on queue overlay invalidation. Section combo box drops down on app run. Component headers are now highlighted crimson when in focus. Added flip board button to chess mini-game and fixed tile color order.
