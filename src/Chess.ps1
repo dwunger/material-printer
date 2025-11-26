@@ -418,7 +418,7 @@ namespace TinyCsChess
 
     public class Engine
     {
-        public int MaxDepth = 4;       // can try 5Ã¢â‚¬â€œ7
+        public int MaxDepth = 4;       // can try 5ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“7
         public int TimeMs   = 0;       // not used here
         const int INF = 1000000000;
 
@@ -771,6 +771,172 @@ $panel.Size = New-Object Drawing.Size -ArgumentList (8*$tile), (8*$tile)
 $panel.BackColor = [Drawing.Color]::FromArgb(230,230,230)
 $panel.Cursor = [Windows.Forms.Cursors]::Hand
 
+
+# === HISTORY PANE (non-invasive; correct move tracking and SAN display) ===
+
+# safe arrow creation (ASCII-only source)
+$arrowLeft  = [string][char]0x2B9C
+$arrowRight = [string][char]0x2B9E
+
+# layout constants
+$panelHistoryWidth = 200
+$baseBoardWidth  = 8 * $tile
+$baseBoardHeight = 8 * $tile + 56
+
+# state
+$script:MoveHistory = @()
+$script:ReviewIndex = -1
+$script:LastHash = $null
+$script:LastBoard = $null
+
+# UI construction
+$panelHistory = New-Object Windows.Forms.Panel
+$panelHistory.Size = New-Object Drawing.Size $panelHistoryWidth, $baseBoardHeight
+$panelHistory.Location = New-Object Drawing.Point ($baseBoardWidth + 2), 0
+$panelHistory.BackColor = [Drawing.Color]::FromArgb(240,240,240)
+$panelHistory.Visible = $false
+$form.Controls.Add($panelHistory)
+
+$lblHistory = New-Object Windows.Forms.Label
+$lblHistory.Text = "Move History"
+$lblHistory.Font = New-Object Drawing.Font ("Segoe UI", 10, [Drawing.FontStyle]::Bold)
+$lblHistory.AutoSize = $true
+$lblHistory.Location = New-Object Drawing.Point 8, 8
+$panelHistory.Controls.Add($lblHistory)
+
+$listHistory = New-Object Windows.Forms.ListBox
+$listHistory.Location = New-Object Drawing.Point 8, 30
+$listHistory.Size = New-Object Drawing.Size 180, 400
+$panelHistory.Controls.Add($listHistory)
+
+$btnBack = New-Object Windows.Forms.Button
+$btnBack.Text = "$arrowLeft Prev"
+$btnBack.Size = New-Object Drawing.Size 85, 25
+$btnBack.Location = New-Object Drawing.Point 8, 440
+$panelHistory.Controls.Add($btnBack)
+
+$btnForward = New-Object Windows.Forms.Button
+$btnForward.Text = "Next $arrowRight"
+$btnForward.Size = New-Object Drawing.Size 85, 25
+$btnForward.Location = New-Object Drawing.Point 100, 440
+$panelHistory.Controls.Add($btnForward)
+
+# collapse toggle
+$btnTogglePane = New-Object Windows.Forms.Button
+$btnTogglePane.Text = $arrowRight
+$btnTogglePane.Width = 30
+$btnTogglePane.Height = 25
+$btnTogglePane.Location = New-Object Drawing.Point ($baseBoardWidth - 35), 3
+$form.Controls.Add($btnTogglePane)
+$btnTogglePane.BringToFront()
+
+function Adjust-FormSize {
+    if ($panelHistory.Visible) {
+        $panelHistory.Location = New-Object Drawing.Point ($baseBoardWidth + 2), 0
+        $form.ClientSize = New-Object Drawing.Size ($baseBoardWidth + $panelHistoryWidth + 2), $baseBoardHeight
+    } else {
+        $form.ClientSize = New-Object Drawing.Size $baseBoardWidth, $baseBoardHeight
+    }
+    $panel.BringToFront()
+    $btnTogglePane.BringToFront()
+}
+
+$btnTogglePane.Add_Click({
+    $panelHistory.Visible = -not $panelHistory.Visible
+    $btnTogglePane.Text = if ($panelHistory.Visible) { $arrowLeft } else { $arrowRight }
+    Adjust-FormSize
+})
+
+# history helpers
+function Record-PositionFromBoard {
+    $script:MoveHistory += ,$board.Copy()
+    $script:ReviewIndex = $script:MoveHistory.Count - 1
+    $listHistory.Items.Add(("Move {0}" -f $script:ReviewIndex))
+    $listHistory.SelectedIndex = $script:ReviewIndex
+    $panel.Enabled = ($script:ReviewIndex -eq ($script:MoveHistory.Count - 1))
+}
+
+function Load-Position([int]$index) {
+    if ($index -lt 0 -or $index -ge $script:MoveHistory.Count) { return }
+    $b = $script:MoveHistory[$index]
+    $board.S = [char[]]$b.S.Clone()
+    $board.WhiteToMove = $b.WhiteToMove
+    $board.WK=$b.WK; $board.WQ=$b.WQ; $board.BK=$b.BK; $board.BQ=$b.BQ
+    $board.Half=$b.Half; $board.Full=$b.Full
+    $script:ReviewIndex = $index
+    $listHistory.SelectedIndex = $index
+    $panel.Enabled = ($script:ReviewIndex -eq ($script:MoveHistory.Count - 1))
+    Refresh-Panel; Update-Status
+}
+
+$btnBack.Add_Click({ if ($script:ReviewIndex -gt 0) { Load-Position ($script:ReviewIndex - 1) } })
+$btnForward.Add_Click({ if ($script:ReviewIndex -lt ($script:MoveHistory.Count - 1)) { Load-Position ($script:ReviewIndex + 1) } })
+
+$form.Add_KeyDown({
+    if ($args[1].KeyCode -eq 'Left')  { $btnBack.PerformClick() }
+    if ($args[1].KeyCode -eq 'Right') { $btnForward.PerformClick() }
+})
+
+function Get-AlgebraicMoveText([TinyCsChess.Board]$before, [TinyCsChess.Board]$after) {
+    $from = -1
+    $to   = -1
+    for ($i = 0; $i -lt 64; $i++) {
+        $a = $after.S[$i]
+        $b = $before.S[$i]
+        if ($b -ne '.' -and $a -eq '.') { $from = $i }
+        elseif ($b -eq '.' -and $a -ne '.') { $to = $i }
+    }
+    if ($from -lt 0 -or $to -lt 0) { return "…" }
+
+    $files = "abcdefgh"
+    $ranks = "12345678"
+    $fromText = "{0}{1}" -f $files[[TinyCsChess.Board]::FileOf($from)], $ranks[[TinyCsChess.Board]::RankOf($from)]
+    $toText   = "{0}{1}" -f $files[[TinyCsChess.Board]::FileOf($to)],   $ranks[[TinyCsChess.Board]::RankOf($to)]
+    $piece = $before.S[$from]
+    $isPawn = ($piece -eq 'P' -or $piece -eq 'p')
+    $prefix = if ($isPawn) { "" } else { [string]([char]([char]::ToUpper($piece))) }
+    return "$prefix$fromText-$toText"
+}
+
+
+# --- Passive recorder (only logs new real moves) ---
+$histTimer = New-Object System.Windows.Forms.Timer
+$histTimer.Interval = 120
+$histTimer.Add_Tick({
+    try {
+        $h = $board.ComputeHash()
+        if ($script:LastHash -eq $null) {
+            $script:LastHash = $h
+            $script:LastBoard = $board.Copy()
+            return
+        }
+
+        # only record when board actually changed and user is at newest position
+        if ($h -ne $script:LastHash -and $script:ReviewIndex -eq ($script:MoveHistory.Count - 1)) {
+            $text = Get-AlgebraicMoveText $script:LastBoard $board
+            $script:LastBoard = $board.Copy()
+            $script:LastHash = $h
+            Record-PositionFromBoard
+            $listHistory.Items[$listHistory.Items.Count - 1] = $text
+        }
+    } catch {}
+})
+
+# --- Initialize and start ---
+$form.Add_Shown({
+    if ($script:MoveHistory.Count -eq 0) {
+        Record-PositionFromBoard
+        $script:LastHash = $board.ComputeHash()
+        $script:LastBoard = $board.Copy()
+        $listHistory.Items[0] = "Start"
+    }
+    $histTimer.Start()
+    Adjust-FormSize
+})
+
+
+
+
 $form.Controls.AddRange(@($lblSide,$sideCombo,$btnNew,$lblStatus,$panel))
 
 # Orientation
@@ -783,7 +949,7 @@ $script:DragPiece  = [char]0
 $script:DragPoint  = New-Object Drawing.Point -ArgumentList 0, 0
 $script:LegalTos   = @()
 
-# ===== Sprite support (Wikipedia) Ã¢â‚¬â€ crisp, pre-sized to $tile =====
+# ===== Sprite support (Wikipedia) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â crisp, pre-sized to $tile =====
 $script:SpritesOk   = $false
 $script:SpriteSheet = $null
 $script:PieceBmp    = @{}  # char -> System.Drawing.Bitmap ($tile x $tile)
