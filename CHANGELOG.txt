@@ -1,6 +1,10 @@
  ## UPDATES
+
+ v1.1.56 — November 27, 2025 10:04
+  Removed tumor marker test materials. Added Horde chess variant.
+
  v1.1.55 — November 25, 2025 10:36
-  Added algebraic notation history panel
+  Added algebraic notation history panel.
 
  v1.1.54 — November 25, 2025 04:28
   Added giveaway chess variant and updated wash solution lot information.
