@@ -18,6 +18,8 @@ namespace TinyCsChess
     public static class Globals
     {
         public static bool VariantGiveaway = false;
+        public static bool VariantHorde = false;
+
     }
 
 
@@ -34,19 +36,40 @@ namespace TinyCsChess
 
         public void Reset()
         {
-            string start =
-                "RNBQKBNR" +
-                "PPPPPPPP" +
-                "........" +
-                "........" +
-                "........" +
-                "........" +
-                "pppppppp" +
-                "rnbqkbnr";
-            for(int i=0;i<64;i++) S[i]=start[i];
-            WhiteToMove = true; Half=0; Full=1;
-            WK=WQ=BK=BQ=true;
+            string start;
+
+            if (TinyCsChess.Globals.VariantHorde)
+            {
+                // Horde setup: white pawn horde starts at the bottom (rank 0)
+                start =
+                    "PPPPPPPP" +  // rank 7 (black back rank, top)
+                    "PPPPPPPP" +  // rank 6 (black pawns)
+                    "PPPPPPPP" +  // rank 5
+                    "PPPPPPPP" +  // rank 4
+                    ".PP..PP." +  // rank 3
+                    "........" +  // rank 2
+                    "pppppppp" +  // rank 1
+                    "rnbqkbnr";   // rank 0 (white horde base, bottom)
+            }
+            else
+            {
+                // Standard chess layout
+                start =
+                    "RNBQKBNR" +
+                    "PPPPPPPP" +
+                    "........" +
+                    "........" +
+                    "........" +
+                    "........" +
+                    "pppppppp" +
+                    "rnbqkbnr";
+            }
+
+            for (int i = 0; i < 64; i++) S[i] = start[i];
+            WhiteToMove = true; Half = 0; Full = 1;
+            WK = WQ = BK = BQ = true;
         }
+
 
         public Board Copy()
         {
@@ -181,7 +204,7 @@ namespace TinyCsChess
                 char pl = char.ToLower(p);
                 if(pl=='p'){
                     bool w = IsWhite(p);
-                    int dir = w? +1 : -1;         // white forward increases rank
+                    int dir = w ? +1 : -1;   // white forward increases rank
                     int startRank = w? 1 : 6;
                     int promoteRank = w? 7 : 0;
 
@@ -418,7 +441,7 @@ namespace TinyCsChess
 
     public class Engine
     {
-        public int MaxDepth = 4;       // can try 5ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“7
+        public int MaxDepth = 4;       // can try 5ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ7
         public int TimeMs   = 0;       // not used here
         const int INF = 1000000000;
 
@@ -535,15 +558,28 @@ namespace TinyCsChess
             }
 
             var moves = b.GetLegalMoves();
-            if (moves.Count == 0)
+            if (moves == null || moves.Count == 0)
             {
-                if (TinyCsChess.Globals.VariantGiveaway)
-                    return +20000 - ply; // stalemate = win
-                if (inCheck)
-                    return -20000 + ply; // checkmate = loss
-                return 0; // stalemate draw
-            }
+                if (TinyCsChess.Globals.VariantHorde)
+                {
+                    // Horde special end: if no white pieces, black wins; if black king gone, white wins
+                    bool whiteExists = false, blackKingAlive = false;
+                    for (int i = 0; i < 64; i++)
+                    {
+                        char p = b.S[i];
+                        if (p == 'k') blackKingAlive = true;
+                        if (TinyCsChess.Board.IsWhite(p)) whiteExists = true;
+                    }
+                    if (!whiteExists) return -20000 + ply;
+                    if (!blackKingAlive) return +20000 - ply;
+                }
 
+                if (TinyCsChess.Globals.VariantGiveaway)
+                    return +20000 - ply;
+                if (inCheck)
+                    return -20000 + ply;
+                return 0;
+            }
 
             moves.Sort(delegate(Move x, Move y){
                 int sx = ScoreMove(b, x, prevBest, ply);
@@ -552,7 +588,8 @@ namespace TinyCsChess
             });
 
             int bestScore = -INF;
-            Move bestMove = moves[0];
+            Move bestMove = null;
+
 
             bool allowFutility = (!inCheck && depth <= 2);
             int movesSearched = 0;
@@ -725,6 +762,8 @@ $variantCombo = New-Object Windows.Forms.ComboBox
 $variantCombo.DropDownStyle = [Windows.Forms.ComboBoxStyle]::DropDownList
 [void]$variantCombo.Items.Add("Standard")
 [void]$variantCombo.Items.Add("Giveaway")
+[void]$variantCombo.Items.Add("Horde")
+
 $variantCombo.SelectedIndex = 0
 $variantCombo.Location = New-Object Drawing.Point -ArgumentList 440, 4
 $variantCombo.Width = 90
@@ -738,7 +777,9 @@ $variantCombo.Add_SelectedIndexChanged({
 
 function Sync-Variant {
     [TinyCsChess.Globals]::VariantGiveaway = ($variantCombo.SelectedItem -eq 'Giveaway')
+    [TinyCsChess.Globals]::VariantHorde    = ($variantCombo.SelectedItem -eq 'Horde')
 }
+
 $variantCombo.Add_SelectedIndexChanged({ Sync-Variant })
 
 
@@ -886,7 +927,7 @@ function Get-AlgebraicMoveText([TinyCsChess.Board]$before, [TinyCsChess.Board]$a
         if ($b -ne '.' -and $a -eq '.') { $from = $i }
         elseif ($b -eq '.' -and $a -ne '.') { $to = $i }
     }
-    if ($from -lt 0 -or $to -lt 0) { return "…" }
+    if ($from -lt 0 -or $to -lt 0) { return "â€¦" }
 
     $files = "abcdefgh"
     $ranks = "12345678"
@@ -949,7 +990,7 @@ $script:DragPiece  = [char]0
 $script:DragPoint  = New-Object Drawing.Point -ArgumentList 0, 0
 $script:LegalTos   = @()
 
-# ===== Sprite support (Wikipedia) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â crisp, pre-sized to $tile =====
+# ===== Sprite support (Wikipedia) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â crisp, pre-sized to $tile =====
 $script:SpritesOk   = $false
 $script:SpriteSheet = $null
 $script:PieceBmp    = @{}  # char -> System.Drawing.Bitmap ($tile x $tile)
@@ -1121,7 +1162,10 @@ function Start-NewGame {
 
         # Computer (White) makes the first move synchronously
         $best = $engine.GetBestMove($board)
-        if($best.From -ne -1){ $board.MakeMove($best) }
+        if ($best -and $best.From -ne -1) {
+            $board.MakeMove($best)
+        }
+
         Refresh-Panel; Update-Status
     }
 }
@@ -1177,6 +1221,15 @@ $panel.Add_MouseUp({
         # end detection
         $legal = $board.GetLegalMoves()
         if($legal.Count -eq 0){
+            if($script:Variant -eq "Horde"){
+                # White wins when black king is checkmated
+                if(-not ($board.S -contains 'P' -or $board.S -contains 'N' -or $board.S -contains 'B' -or $board.S -contains 'R' -or $board.S -contains 'Q' -or $board.S -contains 'K')){
+                    [Windows.Forms.MessageBox]::Show("Horde win! The horde has overrun the king.") | Out-Null
+                } else {
+                    [Windows.Forms.MessageBox]::Show("Checkmate! The horde has been defeated.") | Out-Null
+                }
+                Start-NewGame; return
+            }
             if($script:Variant -eq "Giveaway"){
                 [Windows.Forms.MessageBox]::Show("Giveaway win! Side to move has no legal moves (stalemate) or lost all pieces.") | Out-Null
 
