@@ -19,6 +19,8 @@ namespace TinyCsChess
     {
         public static bool VariantGiveaway = false;
         public static bool VariantHorde = false;
+        public static bool VariantCastle = false;
+        public static bool VariantBulwark  = false;
 
     }
 
@@ -50,6 +52,30 @@ namespace TinyCsChess
                     "........" +  // rank 2
                     "pppppppp" +  // rank 1
                     "rnbqkbnr";   // rank 0 (white horde base, bottom)
+            }
+            if (TinyCsChess.Globals.VariantCastle)
+            {
+                start =
+                    "RNBQKBNR" +  // rank 7 (top)
+                    "PPPPPPPP" +  // rank 6
+                    "........" +  // rank 5
+                    "........" +  // rank 4
+                    "........" +  // rank 3
+                    "p......p" +  // rank 2
+                    "rppppppr" +  // rank 1
+                    "rnbqkbnr";   // rank 0 (bottom)
+            }
+            if (TinyCsChess.Globals.VariantBulwark)
+            {
+                start =
+                    "RNBQKBNR" +  // rank 7 (top)
+                    "PPPPPPPP" +  // rank 6
+                    "........" +  // rank 5
+                    "........" +  // rank 4
+                    "........" +  // rank 3
+                    "........" +  // rank 2
+                    "pppppppp" +  // rank 1
+                    "rrrrkrrr";   // rank 0 (bottom)
             }
             else
             {
@@ -441,7 +467,7 @@ namespace TinyCsChess
 
     public class Engine
     {
-        public int MaxDepth = 4;       // can try 5ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ7
+        public int MaxDepth = 4;       // can try 5ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“7
         public int TimeMs   = 0;       // not used here
         const int INF = 1000000000;
 
@@ -763,6 +789,8 @@ $variantCombo.DropDownStyle = [Windows.Forms.ComboBoxStyle]::DropDownList
 [void]$variantCombo.Items.Add("Standard")
 [void]$variantCombo.Items.Add("Giveaway")
 [void]$variantCombo.Items.Add("Horde")
+[void]$variantCombo.Items.Add("Castle")
+[void]$variantCombo.Items.Add("Bulwark")
 
 $variantCombo.SelectedIndex = 0
 $variantCombo.Location = New-Object Drawing.Point -ArgumentList 440, 4
@@ -778,6 +806,8 @@ $variantCombo.Add_SelectedIndexChanged({
 function Sync-Variant {
     [TinyCsChess.Globals]::VariantGiveaway = ($variantCombo.SelectedItem -eq 'Giveaway')
     [TinyCsChess.Globals]::VariantHorde    = ($variantCombo.SelectedItem -eq 'Horde')
+    [TinyCsChess.Globals]::VariantCastle   = ($variantCombo.SelectedItem -eq 'Castle')
+    [TinyCsChess.Globals]::VariantBulwark   = ($variantCombo.SelectedItem -eq 'Bulwark')
 }
 
 $variantCombo.Add_SelectedIndexChanged({ Sync-Variant })
@@ -927,7 +957,7 @@ function Get-AlgebraicMoveText([TinyCsChess.Board]$before, [TinyCsChess.Board]$a
         if ($b -ne '.' -and $a -eq '.') { $from = $i }
         elseif ($b -eq '.' -and $a -ne '.') { $to = $i }
     }
-    if ($from -lt 0 -or $to -lt 0) { return "â€¦" }
+    if ($from -lt 0 -or $to -lt 0) { return "Ã¢â‚¬Â¦" }
 
     $files = "abcdefgh"
     $ranks = "12345678"
@@ -990,7 +1020,7 @@ $script:DragPiece  = [char]0
 $script:DragPoint  = New-Object Drawing.Point -ArgumentList 0, 0
 $script:LegalTos   = @()
 
-# ===== Sprite support (Wikipedia) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â crisp, pre-sized to $tile =====
+# ===== Sprite support (Wikipedia) ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â crisp, pre-sized to $tile =====
 $script:SpritesOk   = $false
 $script:SpriteSheet = $null
 $script:PieceBmp    = @{}  # char -> System.Drawing.Bitmap ($tile x $tile)
