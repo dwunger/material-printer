@@ -1,4 +1,6 @@
  ## UPDATES
+ v1.1.57 — December 1, 2025 09:53
+  Add Castle and Bulwark variants to Chess game
 
  v1.1.56 — November 27, 2025 10:04
   Removed tumor marker test materials. Added Horde chess variant.
