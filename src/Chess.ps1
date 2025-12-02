@@ -42,40 +42,39 @@ namespace TinyCsChess
 
             if (TinyCsChess.Globals.VariantHorde)
             {
-                // Horde setup: white pawn horde starts at the bottom (rank 0)
                 start =
-                    "PPPPPPPP" +  // rank 7 (black back rank, top)
-                    "PPPPPPPP" +  // rank 6 (black pawns)
-                    "PPPPPPPP" +  // rank 5
-                    "PPPPPPPP" +  // rank 4
-                    ".PP..PP." +  // rank 3
-                    "........" +  // rank 2
-                    "pppppppp" +  // rank 1
-                    "rnbqkbnr";   // rank 0 (white horde base, bottom)
+                    "PPPPPPPP" +
+                    "PPPPPPPP" +
+                    "PPPPPPPP" +
+                    "PPPPPPPP" +
+                    ".PP..PP." +
+                    "........" +
+                    "pppppppp" +
+                    "rnbqkbnr";
             }
-            if (TinyCsChess.Globals.VariantCastle)
+            else if (TinyCsChess.Globals.VariantCastle)
             {
                 start =
-                    "RNBQKBNR" +  // rank 7 (top)
-                    "PPPPPPPP" +  // rank 6
-                    "........" +  // rank 5
-                    "........" +  // rank 4
-                    "........" +  // rank 3
-                    "p......p" +  // rank 2
-                    "rppppppr" +  // rank 1
-                    "rnbqkbnr";   // rank 0 (bottom)
+                    "RNBQKBNR" +
+                    "PPPPPPPP" +
+                    "........" +
+                    "........" +
+                    "........" +
+                    "p......p" +
+                    "rppppppr" +
+                    "rnbqkbnr";
             }
-            if (TinyCsChess.Globals.VariantBulwark)
+            else if (TinyCsChess.Globals.VariantBulwark)
             {
                 start =
-                    "RNBQKBNR" +  // rank 7 (top)
-                    "PPPPPPPP" +  // rank 6
-                    "........" +  // rank 5
-                    "........" +  // rank 4
-                    "........" +  // rank 3
-                    "........" +  // rank 2
-                    "pppppppp" +  // rank 1
-                    "rrrrkrrr";   // rank 0 (bottom)
+                    "RNBQKBNR" +
+                    "PPPPPPPP" +
+                    "........" +
+                    "........" +
+                    "........" +
+                    "........" +
+                    "pppppppp" +
+                    "rrrrkrrr";
             }
             else
             {
