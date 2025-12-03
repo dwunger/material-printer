@@ -21,7 +21,7 @@ namespace TinyCsChess
         public static bool VariantHorde = false;
         public static bool VariantCastle = false;
         public static bool VariantBulwark  = false;
-        public static bool VariantCentaur = false;
+
     }
 
 
@@ -75,18 +75,6 @@ namespace TinyCsChess
                     "...pp..." +
                     "pppqkppp" +
                     "rrrrrrrr";
-            }
-            else if (TinyCsChess.Globals.VariantCentaur)
-            {
-                start =
-                    "RCBQKBCR" +
-                    "PPPPPPPP" +
-                    "........" +
-                    "........" +
-                    "........" +
-                    "p......p" +
-                    "rppppppr" +
-                    "rcbqkbcr";
             }
             else
             {
@@ -278,7 +266,7 @@ namespace TinyCsChess
                         }
                     }
                 }
-                else if(pl=='n' || pl=='c'){  // centaur moves like knight
+                else if(pl=='n'){
                     int[] offs = new int[]{-17,-15,-10,-6,6,10,15,17};
                     for(int k=0;k<8;k++){
                         int to=sq+offs[k];
@@ -290,21 +278,7 @@ namespace TinyCsChess
                             }
                         }
                     }
-                    if(pl=='c'){ // centaur also moves like king
-                        int[] kingOffsets = new int[]{-9,-8,-7,-1,1,7,8,9};
-                        for(int i=0;i<kingOffsets.Length;i++){
-                            int to=sq+kingOffsets[i];
-                            if(to>=0 && to<64){
-                                int tf=FileOf(to), tr=RankOf(to);
-                                if(Math.Abs(tf-f)<=1 && Math.Abs(tr-r)<=1){
-                                    char t=S[to];
-                                    if(t=='.' || IsWhite(t)!=IsWhite(p)) mv.Add(new Move(sq,to,'\0'));
-                                }
-                            }
-                        }
-                    }
                 }
-
                 else{
                     int[][] dirs;
                     if(pl=='b') dirs=new int[][]{new int[]{1,1},new int[]{1,-1},new int[]{-1,1},new int[]{-1,-1}};
@@ -398,77 +372,40 @@ namespace TinyCsChess
 
         private bool CanAttack(int from, int to)
         {
-            char p = S[from];
-            char pl = char.ToLower(p);
-            int ff = FileOf(from), fr = RankOf(from);
-            int tf = FileOf(to),   tr = RankOf(to);
-            int df = tf - ff,      dr = tr - fr;
+            char p = S[from]; char pl = char.ToLower(p);
+            int ff=FileOf(from), fr=RankOf(from), tf=FileOf(to), tr=RankOf(to);
+            int df=tf-ff, dr=tr-fr;
 
-            if (pl == 'p')
-            {
+            if(pl=='p'){
                 bool w = IsWhite(p);
-                return (w && dr == 1 && Math.Abs(df) == 1) || (!w && dr == -1 && Math.Abs(df) == 1);
+                return (w && dr==1 && Math.Abs(df)==1) || (!w && dr==-1 && Math.Abs(df)==1);
             }
+            if(pl=='n'){ return (Math.Abs(df)==2 && Math.Abs(dr)==1) || (Math.Abs(df)==1 && Math.Abs(dr)==2); }
+            if(pl=='k'){ return Math.Abs(df)<=1 && Math.Abs(dr)<=1; }
 
-            if (pl == 'n')
-                return (Math.Abs(df) == 2 && Math.Abs(dr) == 1) || (Math.Abs(df) == 1 && Math.Abs(dr) == 2);
+            bool diag = Math.Abs(df)==Math.Abs(dr);
+            bool ortho = (df==0 || dr==0);
+            if(pl=='b' && !diag) return false;
+            if(pl=='r' && !ortho) return false;
+            if(pl=='q' && !(diag||ortho)) return false;
 
-            if (pl == 'c')
-            {
-                // Centaur: combines knight + king attack patterns
-                bool knight = (Math.Abs(df) == 2 && Math.Abs(dr) == 1) || (Math.Abs(df) == 1 && Math.Abs(dr) == 2);
-                bool king   = Math.Abs(df) <= 1 && Math.Abs(dr) <= 1;
-                return knight || king;
-            }
-
-            if (pl == 'k')
-                return Math.Abs(df) <= 1 && Math.Abs(dr) <= 1;
-
-            bool diag  = Math.Abs(df) == Math.Abs(dr);
-            bool ortho = (df == 0 || dr == 0);
-
-            if (pl == 'b' && !diag) return false;
-            if (pl == 'r' && !ortho) return false;
-            if (pl == 'q' && !(diag || ortho)) return false;
-
-            int sxf = (df == 0) ? 0 : (df / Math.Abs(df));
-            int sxr = (dr == 0) ? 0 : (dr / Math.Abs(dr));
-            int steps = Math.Max(Math.Abs(df), Math.Abs(dr));
-
-            for (int i = 1; i < steps; i++)
-            {
-                int sq = (fr + i * sxr) * 8 + (ff + i * sxf);
-                if (S[sq] != '.') return false;
-            }
-
+            int sxf = (df==0)?0:(df/Math.Abs(df));
+            int sxr = (dr==0)?0:(dr/Math.Abs(dr));
+            int steps = Math.Max(Math.Abs(df),Math.Abs(dr));
+            for(int i=1;i<steps;i++){ int sq = (fr+i*sxr)*8 + (ff+i*sxf); if(S[sq] != '.') return false; }
             return true;
         }
 
-
         public int Evaluate()
         {
-            int score = 0;
-            for (int i = 0; i < 64; i++)
-            {
-                char p = S[i];
-                if (p == '.') continue;
-
-                int val = 0;
-                switch (char.ToLower(p))
-                {
-                    case 'p': val = 100; break;
-                    case 'n': val = 320; break;
-                    case 'b': val = 330; break;
-                    case 'r': val = 500; break;
-                    case 'q': val = 900; break;
-                    case 'k': val = 20000; break;
-                    case 'c': val = 650; break; // Centaur = Knight + King hybrid
+            int score=0;
+            for(int i=0;i<64;i++){
+                char p=S[i]; if(p=='.') continue;
+                int val=0; switch(char.ToLower(p)){
+                    case 'p': val=100; break; case 'n': val=320; break; case 'b': val=330; break;
+                    case 'r': val=500; break; case 'q': val=900; break; case 'k': val=20000; break;
                 }
-
-                if (IsWhite(p))
-                    score += val;
-                else
-                    score -= val;
+                if(IsWhite(p)) score+=val; else score-=val;
             }
             return score;
         }
@@ -529,7 +466,7 @@ namespace TinyCsChess
 
     public class Engine
     {
-        public int MaxDepth = 4;       // can try 
+        public int MaxDepth = 4;       // can try 5ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ7
         public int TimeMs   = 0;       // not used here
         const int INF = 1000000000;
 
@@ -548,17 +485,10 @@ namespace TinyCsChess
         int[,] History = new int[64,64];   // from,to
         Move[,] Killers = new Move[256,2]; // per-ply two killers
 
-        static int PieceVal(char p)
-        {
-            switch (char.ToLower(p))
-            {
-                case 'p': return 100;
-                case 'n': return 320;
-                case 'b': return 330;
-                case 'r': return 500;
-                case 'q': return 900;
-                case 'k': return 20000;
-                case 'c': return 650; // Centaur piece value
+        static int PieceVal(char p){
+            switch(char.ToLower(p)){
+                case 'p': return 100; case 'n': return 320; case 'b': return 330;
+                case 'r': return 500; case 'q': return 900; case 'k': return 20000;
             }
             return 0;
         }
@@ -789,31 +719,6 @@ namespace TinyCsChess
             }
             return best;
         }
-
-        public static class SpriteHelper
-        {
-            public static System.Drawing.Bitmap LoadBitmapFromUrl(string url)
-            {
-                using (var wc = new System.Net.WebClient())
-                {
-                    byte[] bytes = wc.DownloadData(url);
-                    using (var ms = new System.IO.MemoryStream(bytes))
-                    {
-                        return new System.Drawing.Bitmap(ms);
-                    }
-                }
-            }
-        }
-
-        public static System.Drawing.Bitmap LoadBitmapFromBase64(string base64)
-        {
-            byte[] bytes = Convert.FromBase64String(base64);
-            using (var ms = new System.IO.MemoryStream(bytes))
-                return new System.Drawing.Bitmap(ms);
-        }
-
-
-
     }
 }
 "@ -ReferencedAssemblies System.Windows.Forms,System.Drawing
@@ -884,9 +789,7 @@ $variantCombo.DropDownStyle = [Windows.Forms.ComboBoxStyle]::DropDownList
 [void]$variantCombo.Items.Add("Giveaway")
 [void]$variantCombo.Items.Add("Horde")
 [void]$variantCombo.Items.Add("Castle")
-[void]$variantCombo.Items.Add("Centaur")
 [void]$variantCombo.Items.Add("Bulwark")
-
 
 $variantCombo.SelectedIndex = 0
 $variantCombo.Location = New-Object Drawing.Point -ArgumentList 440, 4
@@ -904,7 +807,6 @@ function Sync-Variant {
     [TinyCsChess.Globals]::VariantHorde    = ($variantCombo.SelectedItem -eq 'Horde')
     [TinyCsChess.Globals]::VariantCastle   = ($variantCombo.SelectedItem -eq 'Castle')
     [TinyCsChess.Globals]::VariantBulwark   = ($variantCombo.SelectedItem -eq 'Bulwark')
-    [TinyCsChess.Globals]::VariantCentaur = ($variantCombo.SelectedItem -eq 'Centaur')
 }
 
 $variantCombo.Add_SelectedIndexChanged({ Sync-Variant })
@@ -1117,7 +1019,7 @@ $script:DragPiece  = [char]0
 $script:DragPoint  = New-Object Drawing.Point -ArgumentList 0, 0
 $script:LegalTos   = @()
 
-# ===== Sprite support (Wikipedia)  crisp, pre-sized to $tile =====
+# ===== Sprite support (Wikipedia) ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â crisp, pre-sized to $tile =====
 $script:SpritesOk   = $false
 $script:SpriteSheet = $null
 $script:PieceBmp    = @{}  # char -> System.Drawing.Bitmap ($tile x $tile)
@@ -1175,43 +1077,6 @@ function Initialize-Sprites {
             }
         }
 
-        # --- Embedded Centaur sprites ---
-        try {
-            $whiteCentaurB64 = "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"
-            $blackCentaurB64 = "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"
-
-            $script:PieceBmp[[char]'C'] = [TinyCsChess.Engine]::LoadBitmapFromBase64($whiteCentaurB64)
-            $script:PieceBmp[[char]'c'] = [TinyCsChess.Engine]::LoadBitmapFromBase64($blackCentaurB64)
-
-            # Scale to tile size if needed
-            foreach($sym in ([char]'C'),([char]'c')){
-                $bmp = $script:PieceBmp[$sym]
-                if($bmp -and $bmp.Width -ne $TileSize){
-                    $scaled = New-Object Drawing.Bitmap $TileSize, $TileSize
-                    $g = [Drawing.Graphics]::FromImage($scaled)
-                    $g.CompositingQuality = 'HighQuality'
-                    $g.InterpolationMode  = 'HighQualityBicubic'
-                    $g.PixelOffsetMode    = 'HighQuality'
-                    $g.SmoothingMode      = 'HighQuality'
-                    $g.DrawImage($bmp, 0, 0, $TileSize, $TileSize)
-                    $g.Dispose()
-                    $bmp.Dispose()
-                    $script:PieceBmp[$sym] = $scaled
-                }
-            }
-
-            # Debug: List all loaded piece keys
-            Write-Host "Loaded piece keys: $($script:PieceBmp.Keys -join ', ')"
-            Write-Host "Contains 'C': $($script:PieceBmp.ContainsKey('C'))"
-            Write-Host "Contains 'c': $($script:PieceBmp.ContainsKey('c'))"
-            if ($script:PieceBmp['C']) {
-                Write-Host "White Centaur size: $($script:PieceBmp['C'].Width) x $($script:PieceBmp['C'].Height)"
-            }
-        }
-        catch {
-            Write-Warning "Centaur sprite embedding failed — using glyph fallback."
-        }
-
         $script:PieceBmp[[char]'.'] = $null
         $script:SpritesOk = $true
     }
@@ -1221,8 +1086,6 @@ function Initialize-Sprites {
         # fallback handled in DrawPiece
     }
 }
-
-
 
 
 # Glyphs / reusable resources (fallback mode)
@@ -1269,23 +1132,16 @@ function DrawPiece($g, [char]$piece, [int]$cx, [int]$cy){
     if($piece -eq '.' ){ return }
     if($script:SpritesOk -and $script:PieceBmp.ContainsKey($piece) -and $script:PieceBmp[$piece]){
         $bmp = $script:PieceBmp[$piece]
-        $x = $cx - [int]($bmp.Width/2)
-        $y = $cy - [int]($bmp.Height/2)
-        $g.DrawImage($bmp, $x, $y, $bmp.Width, $bmp.Height)
+        $dest = New-Object Drawing.Rectangle ($cx - [int]($bmp.Width/2)), ($cy - [int]($bmp.Height/2)), $bmp.Width, $bmp.Height
+        $g.DrawImageUnscaledAndClipped($bmp, $dest)  # no scaling -> crisp
     } else {
-        if ($glyph.ContainsKey([char]$piece)) {
-            $g.DrawString($glyph[[char]$piece], $font, [Drawing.Brushes]::Black, $cx, $cy, $sf)
-        } else {
-            $g.DrawString("?", $font, [Drawing.Brushes]::Red, $cx, $cy, $sf)
-        }
+        $g.DrawString($glyph[[char]$piece], $font, [Drawing.Brushes]::Black, $cx, $cy, $sf)
     }
 }
 
 function Draw-Board([object]$s,[object]$e){
     $g = $e.Graphics
     $g.SmoothingMode = 'AntiAlias'
-    $g.CompositingMode = [Drawing.Drawing2D.CompositingMode]::SourceOver  
-    $g.CompositingQuality = [Drawing.Drawing2D.CompositingQuality]::HighQuality
     for($vr=0; $vr -lt 8; $vr++){
         for($vf=0; $vf -lt 8; $vf++){
             $x=$vf*$tile; $y=(7-$vr)*$tile
