@@ -72,9 +72,9 @@ namespace TinyCsChess
                     "........" +
                     "........" +
                     "........" +
-                    "........" +
-                    "pppppppp" +
-                    "rrrrkrrr";
+                    "...pp..." +
+                    "pppqkppp" +
+                    "rrrrrrrr";
             }
             else
             {
@@ -466,7 +466,7 @@ namespace TinyCsChess
 
     public class Engine
     {
-        public int MaxDepth = 4;       // can try 5ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“7
+        public int MaxDepth = 4;       // can try 5ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ7
         public int TimeMs   = 0;       // not used here
         const int INF = 1000000000;
 
@@ -956,7 +956,7 @@ function Get-AlgebraicMoveText([TinyCsChess.Board]$before, [TinyCsChess.Board]$a
         if ($b -ne '.' -and $a -eq '.') { $from = $i }
         elseif ($b -eq '.' -and $a -ne '.') { $to = $i }
     }
-    if ($from -lt 0 -or $to -lt 0) { return "Ã¢â‚¬Â¦" }
+    if ($from -lt 0 -or $to -lt 0) { return "ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦" }
 
     $files = "abcdefgh"
     $ranks = "12345678"
@@ -1019,7 +1019,7 @@ $script:DragPiece  = [char]0
 $script:DragPoint  = New-Object Drawing.Point -ArgumentList 0, 0
 $script:LegalTos   = @()
 
-# ===== Sprite support (Wikipedia) ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â crisp, pre-sized to $tile =====
+# ===== Sprite support (Wikipedia) ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â crisp, pre-sized to $tile =====
 $script:SpritesOk   = $false
 $script:SpriteSheet = $null
 $script:PieceBmp    = @{}  # char -> System.Drawing.Bitmap ($tile x $tile)
