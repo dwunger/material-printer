@@ -1248,7 +1248,7 @@ function Ensure-CentaurSprites {
         Write-Host "Centaur sprites loaded and scaled." -ForegroundColor Green
     }
     catch {
-        Write-Warning "Centaur sprite load failed — using glyph fallback. $($_.Exception.Message)"
+        Write-Warning "Centaur sprite load failed - using glyph fallback. $($_.Exception.Message)"
         $script:CentaurSpritesReady = $false
         $script:CentaurSpritesTile  = $null
     }
