@@ -1,4 +1,6 @@
  ## UPDATES
+ v1.1.59 — December 3, 2025 06:05
+  Fenagling with the Centaur variant
 
  v1.1.58 — December 2, 2025 08:45
   Lower Bulwark difficulty.
