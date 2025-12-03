@@ -1,4 +1,8 @@
  ## UPDATES
+
+ v1.1.58 — December 2, 2025 08:45
+  Lower Bulwark difficulty.
+
  v1.1.57 — December 1, 2025 09:53
   Add Castle and Bulwark variants to Chess game
 
