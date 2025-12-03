@@ -21,7 +21,7 @@ namespace TinyCsChess
         public static bool VariantHorde = false;
         public static bool VariantCastle = false;
         public static bool VariantBulwark  = false;
-
+        public static bool VariantCentaur = false;
     }
 
 
@@ -75,6 +75,18 @@ namespace TinyCsChess
                     "...pp..." +
                     "pppqkppp" +
                     "rrrrrrrr";
+            }
+            else if (TinyCsChess.Globals.VariantCentaur)
+            {
+                start =
+                    "RCBQKBCR" +
+                    "PPPPPPPP" +
+                    "........" +
+                    "........" +
+                    "........" +
+                    "........" +
+                    "rppppppp" +
+                    "rcbqkbcr";
             }
             else
             {
@@ -266,7 +278,7 @@ namespace TinyCsChess
                         }
                     }
                 }
-                else if(pl=='n'){
+                else if(pl=='n' || pl=='c'){  // centaur moves like knight
                     int[] offs = new int[]{-17,-15,-10,-6,6,10,15,17};
                     for(int k=0;k<8;k++){
                         int to=sq+offs[k];
@@ -278,7 +290,21 @@ namespace TinyCsChess
                             }
                         }
                     }
+                    if(pl=='c'){ // centaur also moves like king
+                        int[] kingOffsets = new int[]{-9,-8,-7,-1,1,7,8,9};
+                        for(int i=0;i<kingOffsets.Length;i++){
+                            int to=sq+kingOffsets[i];
+                            if(to>=0 && to<64){
+                                int tf=FileOf(to), tr=RankOf(to);
+                                if(Math.Abs(tf-f)<=1 && Math.Abs(tr-r)<=1){
+                                    char t=S[to];
+                                    if(t=='.' || IsWhite(t)!=IsWhite(p)) mv.Add(new Move(sq,to,'\0'));
+                                }
+                            }
+                        }
+                    }
                 }
+
                 else{
                     int[][] dirs;
                     if(pl=='b') dirs=new int[][]{new int[]{1,1},new int[]{1,-1},new int[]{-1,1},new int[]{-1,-1}};
@@ -372,40 +398,77 @@ namespace TinyCsChess
 
         private bool CanAttack(int from, int to)
         {
-            char p = S[from]; char pl = char.ToLower(p);
-            int ff=FileOf(from), fr=RankOf(from), tf=FileOf(to), tr=RankOf(to);
-            int df=tf-ff, dr=tr-fr;
+            char p = S[from];
+            char pl = char.ToLower(p);
+            int ff = FileOf(from), fr = RankOf(from);
+            int tf = FileOf(to),   tr = RankOf(to);
+            int df = tf - ff,      dr = tr - fr;
 
-            if(pl=='p'){
+            if (pl == 'p')
+            {
                 bool w = IsWhite(p);
-                return (w && dr==1 && Math.Abs(df)==1) || (!w && dr==-1 && Math.Abs(df)==1);
+                return (w && dr == 1 && Math.Abs(df) == 1) || (!w && dr == -1 && Math.Abs(df) == 1);
             }
-            if(pl=='n'){ return (Math.Abs(df)==2 && Math.Abs(dr)==1) || (Math.Abs(df)==1 && Math.Abs(dr)==2); }
-            if(pl=='k'){ return Math.Abs(df)<=1 && Math.Abs(dr)<=1; }
 
-            bool diag = Math.Abs(df)==Math.Abs(dr);
-            bool ortho = (df==0 || dr==0);
-            if(pl=='b' && !diag) return false;
-            if(pl=='r' && !ortho) return false;
-            if(pl=='q' && !(diag||ortho)) return false;
+            if (pl == 'n')
+                return (Math.Abs(df) == 2 && Math.Abs(dr) == 1) || (Math.Abs(df) == 1 && Math.Abs(dr) == 2);
 
-            int sxf = (df==0)?0:(df/Math.Abs(df));
-            int sxr = (dr==0)?0:(dr/Math.Abs(dr));
-            int steps = Math.Max(Math.Abs(df),Math.Abs(dr));
-            for(int i=1;i<steps;i++){ int sq = (fr+i*sxr)*8 + (ff+i*sxf); if(S[sq] != '.') return false; }
+            if (pl == 'c')
+            {
+                // Centaur: combines knight + king attack patterns
+                bool knight = (Math.Abs(df) == 2 && Math.Abs(dr) == 1) || (Math.Abs(df) == 1 && Math.Abs(dr) == 2);
+                bool king   = Math.Abs(df) <= 1 && Math.Abs(dr) <= 1;
+                return knight || king;
+            }
+
+            if (pl == 'k')
+                return Math.Abs(df) <= 1 && Math.Abs(dr) <= 1;
+
+            bool diag  = Math.Abs(df) == Math.Abs(dr);
+            bool ortho = (df == 0 || dr == 0);
+
+            if (pl == 'b' && !diag) return false;
+            if (pl == 'r' && !ortho) return false;
+            if (pl == 'q' && !(diag || ortho)) return false;
+
+            int sxf = (df == 0) ? 0 : (df / Math.Abs(df));
+            int sxr = (dr == 0) ? 0 : (dr / Math.Abs(dr));
+            int steps = Math.Max(Math.Abs(df), Math.Abs(dr));
+
+            for (int i = 1; i < steps; i++)
+            {
+                int sq = (fr + i * sxr) * 8 + (ff + i * sxf);
+                if (S[sq] != '.') return false;
+            }
+
             return true;
         }
 
+
         public int Evaluate()
         {
-            int score=0;
-            for(int i=0;i<64;i++){
-                char p=S[i]; if(p=='.') continue;
-                int val=0; switch(char.ToLower(p)){
-                    case 'p': val=100; break; case 'n': val=320; break; case 'b': val=330; break;
-                    case 'r': val=500; break; case 'q': val=900; break; case 'k': val=20000; break;
+            int score = 0;
+            for (int i = 0; i < 64; i++)
+            {
+                char p = S[i];
+                if (p == '.') continue;
+
+                int val = 0;
+                switch (char.ToLower(p))
+                {
+                    case 'p': val = 100; break;
+                    case 'n': val = 320; break;
+                    case 'b': val = 330; break;
+                    case 'r': val = 500; break;
+                    case 'q': val = 900; break;
+                    case 'k': val = 20000; break;
+                    case 'c': val = 650; break; // Centaur = Knight + King hybrid
                 }
-                if(IsWhite(p)) score+=val; else score-=val;
+
+                if (IsWhite(p))
+                    score += val;
+                else
+                    score -= val;
             }
             return score;
         }
@@ -466,7 +529,7 @@ namespace TinyCsChess
 
     public class Engine
     {
-        public int MaxDepth = 4;       // can try 5ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ7
+        public int MaxDepth = 4;       // can try 
         public int TimeMs   = 0;       // not used here
         const int INF = 1000000000;
 
@@ -485,10 +548,17 @@ namespace TinyCsChess
         int[,] History = new int[64,64];   // from,to
         Move[,] Killers = new Move[256,2]; // per-ply two killers
 
-        static int PieceVal(char p){
-            switch(char.ToLower(p)){
-                case 'p': return 100; case 'n': return 320; case 'b': return 330;
-                case 'r': return 500; case 'q': return 900; case 'k': return 20000;
+        static int PieceVal(char p)
+        {
+            switch (char.ToLower(p))
+            {
+                case 'p': return 100;
+                case 'n': return 320;
+                case 'b': return 330;
+                case 'r': return 500;
+                case 'q': return 900;
+                case 'k': return 20000;
+                case 'c': return 650; // Centaur piece value
             }
             return 0;
         }
@@ -719,6 +789,44 @@ namespace TinyCsChess
             }
             return best;
         }
+
+        public static class SpriteHelper
+        {
+            public static System.Drawing.Bitmap LoadBitmapFromUrl(string url)
+            {
+                var request = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(url);
+                request.AllowAutoRedirect = true;
+                request.UserAgent = "PowerShellChess/1.0";
+                request.Timeout = 10000;
+
+                using (var response = (System.Net.HttpWebResponse)request.GetResponse())
+                using (var responseStream = response.GetResponseStream())
+                {
+                    if (responseStream == null)
+                        throw new System.Exception("Null response stream for " + url);
+
+                    using (var ms = new System.IO.MemoryStream())
+                    {
+                        responseStream.CopyTo(ms);
+                        ms.Position = 0;
+                        return new System.Drawing.Bitmap(ms);
+                    }
+                }
+            }
+        }
+
+
+
+
+        public static System.Drawing.Bitmap LoadBitmapFromBase64(string base64)
+        {
+            byte[] bytes = Convert.FromBase64String(base64);
+            using (var ms = new System.IO.MemoryStream(bytes))
+                return new System.Drawing.Bitmap(ms);
+        }
+
+
+
     }
 }
 "@ -ReferencedAssemblies System.Windows.Forms,System.Drawing
@@ -789,7 +897,9 @@ $variantCombo.DropDownStyle = [Windows.Forms.ComboBoxStyle]::DropDownList
 [void]$variantCombo.Items.Add("Giveaway")
 [void]$variantCombo.Items.Add("Horde")
 [void]$variantCombo.Items.Add("Castle")
+[void]$variantCombo.Items.Add("Centaur")
 [void]$variantCombo.Items.Add("Bulwark")
+
 
 $variantCombo.SelectedIndex = 0
 $variantCombo.Location = New-Object Drawing.Point -ArgumentList 440, 4
@@ -806,7 +916,12 @@ function Sync-Variant {
     [TinyCsChess.Globals]::VariantGiveaway = ($variantCombo.SelectedItem -eq 'Giveaway')
     [TinyCsChess.Globals]::VariantHorde    = ($variantCombo.SelectedItem -eq 'Horde')
     [TinyCsChess.Globals]::VariantCastle   = ($variantCombo.SelectedItem -eq 'Castle')
-    [TinyCsChess.Globals]::VariantBulwark   = ($variantCombo.SelectedItem -eq 'Bulwark')
+    [TinyCsChess.Globals]::VariantBulwark  = ($variantCombo.SelectedItem -eq 'Bulwark')
+    [TinyCsChess.Globals]::VariantCentaur  = ($variantCombo.SelectedItem -eq 'Centaur')
+
+    if ([TinyCsChess.Globals]::VariantCentaur) {
+        Ensure-CentaurSprites -TileSize $tile
+    }
 }
 
 $variantCombo.Add_SelectedIndexChanged({ Sync-Variant })
@@ -1019,7 +1134,7 @@ $script:DragPiece  = [char]0
 $script:DragPoint  = New-Object Drawing.Point -ArgumentList 0, 0
 $script:LegalTos   = @()
 
-# ===== Sprite support (Wikipedia) ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â crisp, pre-sized to $tile =====
+# ===== Sprite support (Wikipedia)  crisp, pre-sized to $tile =====
 $script:SpritesOk   = $false
 $script:SpriteSheet = $null
 $script:PieceBmp    = @{}  # char -> System.Drawing.Bitmap ($tile x $tile)
@@ -1027,7 +1142,7 @@ $script:PieceBmp    = @{}  # char -> System.Drawing.Bitmap ($tile x $tile)
 function Initialize-Sprites {
     param([int]$TileSize)
 
-    $desiredWidth = [Math]::Max(6*[int]$TileSize, 270)  # never smaller than 270
+    $desiredWidth = [Math]::Max(6*[int]$TileSize, 270)
     $url = "https://commons.wikimedia.org/wiki/Special:FilePath/Chess_Pieces_Sprite.svg?width=$desiredWidth"
 
     try {
@@ -1077,6 +1192,7 @@ function Initialize-Sprites {
             }
         }
 
+        # NOTE: Centaur sprites are no longer loaded here.
         $script:PieceBmp[[char]'.'] = $null
         $script:SpritesOk = $true
     }
@@ -1086,6 +1202,64 @@ function Initialize-Sprites {
         # fallback handled in DrawPiece
     }
 }
+
+# Lazy init for Centaur sprites, only when Centaur variant is active
+$script:CentaurSpritesReady = $false
+$script:CentaurSpritesTile  = $null
+function Ensure-CentaurSprites {
+    param([int]$TileSize)
+
+    if (-not $TileSize) {
+        $TileSize = $tile  # fall back to global tile size
+    }
+
+    if ($script:CentaurSpritesReady -and $script:CentaurSpritesTile -eq $TileSize) { return }
+
+    try {
+        Write-Host "Loading centaur sprites at tilesize $TileSize..." -ForegroundColor Cyan
+
+        # NOTE: use [char] keys to match Initialize-Sprites + DrawPiece
+        $script:PieceBmp[[char]'C'] = [TinyCsChess.Engine+SpriteHelper]::LoadBitmapFromUrl(
+            "https://greenchess.net/piece/white-centaur.png"
+        )
+        $script:PieceBmp[[char]'c'] = [TinyCsChess.Engine+SpriteHelper]::LoadBitmapFromUrl(
+            "https://greenchess.net/piece/black-centaur.png"
+        )
+
+        foreach ($sym in 'C','c') {
+            $key = [char]$sym
+            $bmp = $script:PieceBmp[$key]
+            if ($bmp -and ($bmp.Width -ne $TileSize -or $bmp.Height -ne $TileSize)) {
+                $scaled = New-Object Drawing.Bitmap $TileSize, $TileSize
+                $g = [Drawing.Graphics]::FromImage($scaled)
+                $g.CompositingQuality = 'HighQuality'
+                $g.InterpolationMode  = 'HighQualityBicubic'
+                $g.PixelOffsetMode    = 'HighQuality'
+                $g.SmoothingMode      = 'HighQuality'
+                $g.DrawImage($bmp, 0, 0, $TileSize, $TileSize)
+                $g.Dispose()
+                $bmp.Dispose()
+                $script:PieceBmp[$key] = $scaled
+            }
+        }
+
+        $script:CentaurSpritesReady = $true
+        $script:CentaurSpritesTile  = $TileSize
+        Write-Host "Centaur sprites loaded and scaled." -ForegroundColor Green
+    }
+    catch {
+        Write-Warning "Centaur sprite load failed — using glyph fallback. $($_.Exception.Message)"
+        $script:CentaurSpritesReady = $false
+        $script:CentaurSpritesTile  = $null
+    }
+}
+
+
+
+
+
+
+
 
 
 # Glyphs / reusable resources (fallback mode)
@@ -1129,19 +1303,35 @@ function ModelSqFromPoint([Drawing.Point]$pt){
 }
 
 function DrawPiece($g, [char]$piece, [int]$cx, [int]$cy){
-    if($piece -eq '.' ){ return }
-    if($script:SpritesOk -and $script:PieceBmp.ContainsKey($piece) -and $script:PieceBmp[$piece]){
+    if ($piece -eq '.') { return }
+
+    # Optional lazy init, but not strictly required if Sync-Variant already called it
+    if (($piece -eq 'C' -or $piece -eq 'c') -and -not $script:PieceBmp.ContainsKey($piece)) {
+        try { Ensure-CentaurSprites -TileSize $tile } catch {}
+    }
+
+    if ($script:PieceBmp.ContainsKey($piece) -and $script:PieceBmp[$piece]) {
         $bmp = $script:PieceBmp[$piece]
-        $dest = New-Object Drawing.Rectangle ($cx - [int]($bmp.Width/2)), ($cy - [int]($bmp.Height/2)), $bmp.Width, $bmp.Height
-        $g.DrawImageUnscaledAndClipped($bmp, $dest)  # no scaling -> crisp
-    } else {
-        $g.DrawString($glyph[[char]$piece], $font, [Drawing.Brushes]::Black, $cx, $cy, $sf)
+        $x = $cx - [int]($bmp.Width / 2)
+        $y = $cy - [int]($bmp.Height / 2)
+        $g.DrawImage($bmp, $x, $y, $bmp.Width, $bmp.Height)
+    }
+    else {
+        if ($glyph.ContainsKey([char]$piece)) {
+            $g.DrawString($glyph[[char]$piece], $font, [Drawing.Brushes]::Black, $cx, $cy, $sf)
+        } else {
+            $g.DrawString("?", $font, [Drawing.Brushes]::Red, $cx, $cy, $sf)
+        }
     }
 }
+
+
 
 function Draw-Board([object]$s,[object]$e){
     $g = $e.Graphics
     $g.SmoothingMode = 'AntiAlias'
+    $g.CompositingMode = [Drawing.Drawing2D.CompositingMode]::SourceOver  
+    $g.CompositingQuality = [Drawing.Drawing2D.CompositingQuality]::HighQuality
     for($vr=0; $vr -lt 8; $vr++){
         for($vf=0; $vf -lt 8; $vf++){
             $x=$vf*$tile; $y=(7-$vr)*$tile
@@ -1307,6 +1497,7 @@ $form.Add_FormClosed({
     $lightBrush.Dispose(); $darkBrush.Dispose(); $selBrush.Dispose(); $dotBrush.Dispose()
     $font.Dispose()
 })
+
 
 [void][Windows.Forms.Application]::EnableVisualStyles()
 [void][Windows.Forms.Application]::Run($form)
