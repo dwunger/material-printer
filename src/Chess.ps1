@@ -1256,12 +1256,6 @@ function Ensure-CentaurSprites {
 
 
 
-
-
-
-
-
-
 # Glyphs / reusable resources (fallback mode)
 $glyph = @{
     ([char]'K') = ([string][char]0x2654)
