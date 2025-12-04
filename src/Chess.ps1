@@ -85,7 +85,7 @@ namespace TinyCsChess
                     "........" +
                     "........" +
                     "........" +
-                    "rppppppp" +
+                    "pppppppp" +
                     "rcbqkbcr";
             }
             else
