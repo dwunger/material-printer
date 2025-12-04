@@ -82,8 +82,8 @@ namespace TinyCsChess
                     "RCBQKBCR" +
                     "PPPPPPPP" +
                     "........" +
-                    "........" +
-                    "........" +
+                    "...C...." +
+                    "...c...." +
                     "........" +
                     "pppppppp" +
                     "rcbqkbcr";
@@ -415,9 +415,8 @@ namespace TinyCsChess
 
             if (pl == 'c')
             {
-                // Centaur: combines knight + king attack patterns
                 bool knight = (Math.Abs(df) == 2 && Math.Abs(dr) == 1) || (Math.Abs(df) == 1 && Math.Abs(dr) == 2);
-                bool king   = Math.Abs(df) <= 1 && Math.Abs(dr) <= 1;
+                bool king   = Math.Abs(df) <= 1 && Math.Abs(dr) <= 1 && (df != 0 || dr != 0);
                 return knight || king;
             }
 
@@ -474,33 +473,37 @@ namespace TinyCsChess
         }
 
         // -------- Zobrist hashing (TT key) --------
-        static ulong[] ZPieces = null; // 64 * 12
+        static ulong[] ZPieces = null; // FIXED: Logic below now handles 14 types
         static ulong ZSide = 0;
-        static ulong ZWK=0, ZWQ=0, ZBK=0, ZBQ=0; // castling rights
+        static ulong ZWK=0, ZWQ=0, ZBK=0, ZBQ=0; 
 
         static int PieceIndex(char p){
             switch(p){
                 case 'P': return 0;  case 'N': return 1;  case 'B': return 2;  case 'R': return 3;  case 'Q': return 4;  case 'K': return 5;
                 case 'p': return 6;  case 'n': return 7;  case 'b': return 8;  case 'r': return 9;  case 'q': return 10; case 'k': return 11;
+                // FIXED: Added Centaur indices
+                case 'c': return 12; case 'C': return 13; 
                 default:  return -1;
             }
         }
 
         static void EnsureZobrist(){
             if(ZPieces!=null) return;
-            ZPieces = new ulong[64*12];
-            System.Random rng = new System.Random(881726454); // fixed seed
-            for(int i=0;i<64*12;i++){
+            // FIXED: Increased size from 64*12 to 64*14 to accommodate Centaurs
+            ZPieces = new ulong[64*14]; 
+            System.Random rng = new System.Random(881726454); 
+            // FIXED: Loop updated to 64*14
+            for(int i=0;i<64*14;i++){
                 byte[] b = new byte[8];
                 rng.NextBytes(b);
                 ZPieces[i] = System.BitConverter.ToUInt64(b,0);
             }
             byte[] sb = new byte[8];
             rng.NextBytes(sb); ZSide = System.BitConverter.ToUInt64(sb,0);
-            rng.NextBytes(sb); ZWK   = System.BitConverter.ToUInt64(sb,0);
-            rng.NextBytes(sb); ZWQ   = System.BitConverter.ToUInt64(sb,0);
-            rng.NextBytes(sb); ZBK   = System.BitConverter.ToUInt64(sb,0);
-            rng.NextBytes(sb); ZBQ   = System.BitConverter.ToUInt64(sb,0);
+            rng.NextBytes(sb); ZWK    = System.BitConverter.ToUInt64(sb,0);
+            rng.NextBytes(sb); ZWQ    = System.BitConverter.ToUInt64(sb,0);
+            rng.NextBytes(sb); ZBK    = System.BitConverter.ToUInt64(sb,0);
+            rng.NextBytes(sb); ZBQ    = System.BitConverter.ToUInt64(sb,0);
         }
 
         public ulong ComputeHash(){
@@ -1071,7 +1074,7 @@ function Get-AlgebraicMoveText([TinyCsChess.Board]$before, [TinyCsChess.Board]$a
         if ($b -ne '.' -and $a -eq '.') { $from = $i }
         elseif ($b -eq '.' -and $a -ne '.') { $to = $i }
     }
-    if ($from -lt 0 -or $to -lt 0) { return "ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦" }
+    if ($from -lt 0 -or $to -lt 0) { return "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦" }
 
     $files = "abcdefgh"
     $ranks = "12345678"
@@ -1134,7 +1137,7 @@ $script:DragPiece  = [char]0
 $script:DragPoint  = New-Object Drawing.Point -ArgumentList 0, 0
 $script:LegalTos   = @()
 
-# ===== Sprite support (Wikipedia)  crisp, pre-sized to $tile =====
+# ===== Sprite support (Wikipedia) Â crisp, pre-sized to $tile =====
 $script:SpritesOk   = $false
 $script:SpriteSheet = $null
 $script:PieceBmp    = @{}  # char -> System.Drawing.Bitmap ($tile x $tile)
