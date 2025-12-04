@@ -82,8 +82,8 @@ namespace TinyCsChess
                     "RCBQKBCR" +
                     "PPPPPPPP" +
                     "........" +
-                    "...C...." +
-                    "...c...." +
+                    "........" +
+                    "........" +
                     "........" +
                     "pppppppp" +
                     "rcbqkbcr";
